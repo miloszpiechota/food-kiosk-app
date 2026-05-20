@@ -1,0 +1,29 @@
+{
+  "name": "food-kiosk-app",
+  "version": "1.0.0",
+  "description": "Production-style food ordering kiosk app with React, NestJS, PostgreSQL, Stripe test payments, accessibility, security, testing and CI/CD.",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "dev": "pnpm --parallel --filter @food-kiosk/web --filter @food-kiosk/api dev",
+    "dev:web": "pnpm --filter @food-kiosk/web dev",
+    "dev:api": "pnpm --filter @food-kiosk/api start:dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "packageManager": "pnpm@10.33.4",
+  "devDependencies": {
+    "prettier": "^3.6.0"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=10.0.0"
+  }
+}
