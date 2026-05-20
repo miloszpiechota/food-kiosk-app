@@ -4,13 +4,13 @@
 Food Ordering Kiosk App
 
 ## Summary
-Food Ordering Kiosk App is a production-style full-stack web application designed for self-service ordering in restaurants. The application is intended for customers using kiosk terminals to browse the menu and place orders, and for administrators who need to manage incoming orders.
+Food Ordering Kiosk App is a production-style full-stack web application designed for self-service ordering in restaurants. The application is intended for customers using kiosk terminals to browse products, configure meals, and place orders, and for administrators who need to manage incoming orders.
 
 ## Problem
-Restaurants need a simple and reliable way to present their menu, collect customer orders, and help staff manage those orders efficiently. In both small and large restaurants, manual order handling can slow down service, increase mistakes, and make it harder to track orders consistently.
+Restaurants need a simple and reliable way to present their menu, collect customer orders, and help staff manage those orders efficiently. In both small and large restaurants, manual order handling can slow down service, increase mistakes, and make it harder to track orders consistently. The menu structure also needs to support both simple standalone products and more complex meals made from grouped selections such as sandwich, side, and drink combinations. The restaurant may also need different menus and different availability by time, date, category, or product.
 
 ## Proposed Solution
-The project will provide a kiosk-oriented web application with a terminal-style ordering experience. Customers will be able to browse menu items and place orders through a self-service interface, while administrators will have tools to monitor and manage the order flow.
+The project will provide a kiosk-oriented web application with a terminal-style ordering experience. Customers will be able to browse standalone products, meals, and large meals, configure required meal groups, personalize ingredients, and place orders through a self-service interface. The restaurant will be able to expose different menus with shared categories and products, including menu-specific pricing and scheduled availability. Administrators will have tools to monitor and manage the order flow.
 
 ## Target Users
 - Customers ordering food through restaurant kiosk terminals

@@ -37,12 +37,15 @@ Define the quality attributes and operational expectations for the Food Ordering
 - `NFR-UX-003`: Customers should be able to return to the previous step or state where that does not break payment or order integrity.
 - `NFR-UX-004`: Basket contents and totals shall remain clear and easy to review during ordering.
 - `NFR-UX-005`: The menu presentation should avoid overwhelming the customer and may use pagination or similar structure to support clarity and performance.
+- `NFR-UX-006`: Language selection should be easy to discover on the kiosk start screen and should require minimal effort.
+- `NFR-UX-007`: Supported language changes should apply consistently across the customer-facing kiosk flow, and missing translations should fall back safely to the default language rather than leaving broken or empty text.
 
 ## Maintainability And Scalability
 - `NFR-MNT-001`: The architecture shall remain clear, organized, and understandable for future development.
 - `NFR-MNT-002`: The project shall support future extension for features such as upselling, AI-related capabilities, or other restaurant functionality.
 - `NFR-MNT-003`: The codebase shall use TypeScript and should avoid unresolved TypeScript errors.
 - `NFR-MNT-004`: Documentation shall be updated when system behavior or product scope changes.
+- `NFR-MNT-005`: Customer-facing translatable text should be managed through a structured localization approach rather than duplicated hardcoded copy across screens.
 
 ## Environments
 - `NFR-ENV-001`: The project shall support at least a development environment during the initial phase.

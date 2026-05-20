@@ -1,0 +1,602 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ProductType {
+  ITEM       @map("item")
+  MEAL       @map("meal")
+  LARGE_MEAL @map("large_meal")
+
+  @@map("product_type")
+}
+
+enum SelectionMode {
+  SINGLE   @map("single")
+  MULTIPLE @map("multiple")
+
+  @@map("selection_mode")
+}
+
+enum ModifierActionType {
+  REMOVE @map("remove")
+  ADD    @map("add")
+
+  @@map("modifier_action_type")
+}
+
+enum BasketStatus {
+  ACTIVE      @map("active")
+  CHECKED_OUT @map("checked_out")
+  ABANDONED   @map("abandoned")
+  EXPIRED     @map("expired")
+
+  @@map("basket_status")
+}
+
+enum OrderStatus {
+  NEW         @map("new")
+  IN_PROGRESS @map("in_progress")
+  READY       @map("ready")
+  COMPLETED   @map("completed")
+  CANCELLED   @map("cancelled")
+
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  PENDING                       @map("pending")
+  AWAITING_PAYMENT_CONFIRMATION @map("awaiting_payment_confirmation")
+  PAID                          @map("paid")
+  FAILED                        @map("failed")
+  CANCELLED                     @map("cancelled")
+
+  @@map("payment_status")
+}
+
+enum PaymentProvider {
+  STRIPE @map("stripe")
+
+  @@map("payment_provider")
+}
+
+enum AdminRole {
+  ADMIN @map("admin")
+
+  @@map("admin_role")
+}
+
+enum AvailabilityOverrideType {
+  CLOSURE         @map("closure")
+  SPECIAL_OPENING @map("special_opening")
+  MANUAL_OVERRIDE @map("manual_override")
+
+  @@map("availability_override_type")
+}
+
+model Restaurant {
+  id            String     @id @default(uuid()) @db.Uuid
+  name          String     @db.Text
+  slug          String     @unique @db.Text
+  timezone      String     @db.Text
+  defaultLocale String     @map("default_locale") @db.Text
+  currencyCode  String     @map("currency_code") @db.Text
+  isActive      Boolean    @default(true) @map("is_active")
+  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  menus         Menu[]
+  categories    Category[]
+  products      Product[]
+  orders        Order[]
+
+  @@map("restaurants")
+}
+
+model Menu {
+  id                     String                      @id @default(uuid()) @db.Uuid
+  restaurantId           String                      @map("restaurant_id") @db.Uuid
+  code                   String                      @db.Text
+  name                   String                      @db.Text
+  description            String?                     @db.Text
+  sortOrder              Int                         @default(0) @map("sort_order")
+  isActive               Boolean                     @default(true) @map("is_active")
+  createdAt              DateTime                    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurant             Restaurant                  @relation(fields: [restaurantId], references: [id])
+  translations           MenuTranslation[]
+  menuCategories         MenuCategory[]
+  availabilityRules      MenuAvailabilityRule[]
+  availabilityExceptions MenuAvailabilityException[]
+
+  @@unique([restaurantId, code])
+  @@index([restaurantId, isActive, sortOrder])
+  @@map("menus")
+}
+
+model MenuTranslation {
+  id          String  @id @default(uuid()) @db.Uuid
+  menuId      String  @map("menu_id") @db.Uuid
+  locale      String  @db.Text
+  name        String  @db.Text
+  description String? @db.Text
+  menu        Menu    @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@unique([menuId, locale])
+  @@index([menuId])
+  @@map("menu_translations")
+}
+
+model Category {
+  id             String                @id @default(uuid()) @db.Uuid
+  restaurantId   String                @map("restaurant_id") @db.Uuid
+  code           String                @db.Text
+  name           String                @db.Text
+  description    String?               @db.Text
+  sortOrder      Int                   @default(0) @map("sort_order")
+  isActive       Boolean               @default(true) @map("is_active")
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurant     Restaurant            @relation(fields: [restaurantId], references: [id])
+  translations   CategoryTranslation[]
+  menuCategories MenuCategory[]
+
+  @@unique([restaurantId, code])
+  @@index([restaurantId, isActive, sortOrder])
+  @@map("categories")
+}
+
+model CategoryTranslation {
+  id          String   @id @default(uuid()) @db.Uuid
+  categoryId  String   @map("category_id") @db.Uuid
+  locale      String   @db.Text
+  name        String   @db.Text
+  description String?  @db.Text
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@unique([categoryId, locale])
+  @@index([categoryId])
+  @@map("category_translations")
+}
+
+model Product {
+  id                    String               @id @default(uuid()) @db.Uuid
+  restaurantId          String               @map("restaurant_id") @db.Uuid
+  type                  ProductType
+  sku                   String               @db.Text
+  name                  String               @db.Text
+  description           String?              @db.Text
+  basePrice             Decimal              @map("base_price") @db.Decimal(10, 2)
+  imageUrl              String?              @map("image_url") @db.Text
+  isAvailable           Boolean              @default(true) @map("is_available")
+  isStandaloneOrderable Boolean              @default(false) @map("is_standalone_orderable")
+  canBeMealOption       Boolean              @default(false) @map("can_be_meal_option")
+  sortOrder             Int                  @default(0) @map("sort_order")
+  createdAt             DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurant            Restaurant           @relation(fields: [restaurantId], references: [id])
+  translations          ProductTranslation[]
+  menuProducts          MenuProduct[]
+  productGroups         ProductGroup[]
+  productGroupOptions   ProductGroupOption[]
+  productIngredients    ProductIngredient[]
+  modifierGroups        ModifierGroup[]
+  basketItems           BasketItem[]
+  orderItems            OrderItem[]
+
+  @@unique([restaurantId, sku])
+  @@index([restaurantId, type, isAvailable])
+  @@map("products")
+}
+
+model ProductTranslation {
+  id          String  @id @default(uuid()) @db.Uuid
+  productId   String  @map("product_id") @db.Uuid
+  locale      String  @db.Text
+  name        String  @db.Text
+  description String? @db.Text
+  product     Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, locale])
+  @@index([productId])
+  @@map("product_translations")
+}
+
+model MenuCategory {
+  id                     String                              @id @default(uuid()) @db.Uuid
+  menuId                 String                              @map("menu_id") @db.Uuid
+  categoryId             String                              @map("category_id") @db.Uuid
+  sortOrder              Int                                 @default(0) @map("sort_order")
+  isVisible              Boolean                             @default(true) @map("is_visible")
+  createdAt              DateTime                            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  menu                   Menu                                @relation(fields: [menuId], references: [id], onDelete: Cascade)
+  category               Category                            @relation(fields: [categoryId], references: [id])
+  menuProducts           MenuProduct[]
+  availabilityRules      MenuCategoryAvailabilityRule[]
+  availabilityExceptions MenuCategoryAvailabilityException[]
+
+  @@unique([menuId, categoryId])
+  @@index([menuId, isVisible, sortOrder])
+  @@map("menu_categories")
+}
+
+model MenuProduct {
+  id                     String                             @id @default(uuid()) @db.Uuid
+  menuCategoryId         String                             @map("menu_category_id") @db.Uuid
+  productId              String                             @map("product_id") @db.Uuid
+  menuPrice              Decimal?                           @map("menu_price") @db.Decimal(10, 2)
+  sortOrder              Int                                @default(0) @map("sort_order")
+  isVisible              Boolean                            @default(true) @map("is_visible")
+  createdAt              DateTime                           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  menuCategory           MenuCategory                       @relation(fields: [menuCategoryId], references: [id], onDelete: Cascade)
+  product                Product                            @relation(fields: [productId], references: [id])
+  availabilityRules      MenuProductAvailabilityRule[]
+  availabilityExceptions MenuProductAvailabilityException[]
+  basketItems            BasketItem[]
+  orderItems             OrderItem[]
+
+  @@unique([menuCategoryId, productId])
+  @@index([menuCategoryId, isVisible, sortOrder])
+  @@map("menu_products")
+}
+
+model MenuAvailabilityRule {
+  id               String    @id @default(uuid()) @db.Uuid
+  menuId           String    @map("menu_id") @db.Uuid
+  startDate        DateTime? @map("start_date") @db.Date
+  endDate          DateTime? @map("end_date") @db.Date
+  daysOfWeek       Int[]     @map("days_of_week")
+  startMinuteOfDay Int       @map("start_minute_of_day")
+  endMinuteOfDay   Int       @map("end_minute_of_day")
+  isActive         Boolean   @default(true) @map("is_active")
+  menu             Menu      @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@index([menuId, isActive])
+  @@map("menu_availability_rules")
+}
+
+model MenuAvailabilityException {
+  id           String                   @id @default(uuid()) @db.Uuid
+  menuId       String                   @map("menu_id") @db.Uuid
+  startAt      DateTime                 @map("start_at") @db.Timestamptz(6)
+  endAt        DateTime                 @map("end_at") @db.Timestamptz(6)
+  overrideType AvailabilityOverrideType @map("override_type")
+  isClosed     Boolean                  @default(false) @map("is_closed")
+  reason       String?                  @db.Text
+  isActive     Boolean                  @default(true) @map("is_active")
+  menu         Menu                     @relation(fields: [menuId], references: [id], onDelete: Cascade)
+
+  @@index([menuId, isActive])
+  @@map("menu_availability_exceptions")
+}
+
+model MenuCategoryAvailabilityRule {
+  id               String       @id @default(uuid()) @db.Uuid
+  menuCategoryId   String       @map("menu_category_id") @db.Uuid
+  startDate        DateTime?    @map("start_date") @db.Date
+  endDate          DateTime?    @map("end_date") @db.Date
+  daysOfWeek       Int[]        @map("days_of_week")
+  startMinuteOfDay Int          @map("start_minute_of_day")
+  endMinuteOfDay   Int          @map("end_minute_of_day")
+  isActive         Boolean      @default(true) @map("is_active")
+  menuCategory     MenuCategory @relation(fields: [menuCategoryId], references: [id], onDelete: Cascade)
+
+  @@index([menuCategoryId, isActive])
+  @@map("menu_category_availability_rules")
+}
+
+model MenuCategoryAvailabilityException {
+  id             String                   @id @default(uuid()) @db.Uuid
+  menuCategoryId String                   @map("menu_category_id") @db.Uuid
+  startAt        DateTime                 @map("start_at") @db.Timestamptz(6)
+  endAt          DateTime                 @map("end_at") @db.Timestamptz(6)
+  overrideType   AvailabilityOverrideType @map("override_type")
+  isClosed       Boolean                  @default(false) @map("is_closed")
+  reason         String?                  @db.Text
+  isActive       Boolean                  @default(true) @map("is_active")
+  menuCategory   MenuCategory             @relation(fields: [menuCategoryId], references: [id], onDelete: Cascade)
+
+  @@index([menuCategoryId, isActive])
+  @@map("menu_category_availability_exceptions")
+}
+
+model MenuProductAvailabilityRule {
+  id               String      @id @default(uuid()) @db.Uuid
+  menuProductId    String      @map("menu_product_id") @db.Uuid
+  startDate        DateTime?   @map("start_date") @db.Date
+  endDate          DateTime?   @map("end_date") @db.Date
+  daysOfWeek       Int[]       @map("days_of_week")
+  startMinuteOfDay Int         @map("start_minute_of_day")
+  endMinuteOfDay   Int         @map("end_minute_of_day")
+  isActive         Boolean     @default(true) @map("is_active")
+  menuProduct      MenuProduct @relation(fields: [menuProductId], references: [id], onDelete: Cascade)
+
+  @@index([menuProductId, isActive])
+  @@map("menu_product_availability_rules")
+}
+
+model MenuProductAvailabilityException {
+  id            String                   @id @default(uuid()) @db.Uuid
+  menuProductId String                   @map("menu_product_id") @db.Uuid
+  startAt       DateTime                 @map("start_at") @db.Timestamptz(6)
+  endAt         DateTime                 @map("end_at") @db.Timestamptz(6)
+  overrideType  AvailabilityOverrideType @map("override_type")
+  isClosed      Boolean                  @default(false) @map("is_closed")
+  reason        String?                  @db.Text
+  isActive      Boolean                  @default(true) @map("is_active")
+  menuProduct   MenuProduct              @relation(fields: [menuProductId], references: [id], onDelete: Cascade)
+
+  @@index([menuProductId, isActive])
+  @@map("menu_product_availability_exceptions")
+}
+
+model ProductGroupTemplate {
+  id                   String                            @id @default(uuid()) @db.Uuid
+  code                 String                            @unique @db.Text
+  name                 String                            @db.Text
+  defaultMinSelections Int                               @default(0) @map("default_min_selections")
+  defaultMaxSelections Int                               @default(1) @map("default_max_selections")
+  defaultSelectionMode SelectionMode                     @default(SINGLE) @map("default_selection_mode")
+  isActive             Boolean                           @default(true) @map("is_active")
+  createdAt            DateTime                          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime                          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  translations         ProductGroupTemplateTranslation[]
+  productGroups        ProductGroup[]
+
+  @@map("product_group_templates")
+}
+
+model ProductGroupTemplateTranslation {
+  id                     String               @id @default(uuid()) @db.Uuid
+  productGroupTemplateId String               @map("product_group_template_id") @db.Uuid
+  locale                 String               @db.Text
+  name                   String               @db.Text
+  productGroupTemplate   ProductGroupTemplate @relation(fields: [productGroupTemplateId], references: [id], onDelete: Cascade)
+
+  @@unique([productGroupTemplateId, locale])
+  @@index([productGroupTemplateId])
+  @@map("product_group_template_translations")
+}
+
+model ProductGroup {
+  id                     String               @id @default(uuid()) @db.Uuid
+  productId              String               @map("product_id") @db.Uuid
+  productGroupTemplateId String               @map("product_group_template_id") @db.Uuid
+  nameOverride           String?              @map("name_override") @db.Text
+  minSelections          Int                  @default(0) @map("min_selections")
+  maxSelections          Int                  @default(1) @map("max_selections")
+  selectionMode          SelectionMode        @default(SINGLE) @map("selection_mode")
+  sortOrder              Int                  @default(0) @map("sort_order")
+  isRequired             Boolean              @default(true) @map("is_required")
+  product                Product              @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productGroupTemplate   ProductGroupTemplate @relation(fields: [productGroupTemplateId], references: [id])
+  options                ProductGroupOption[]
+
+  @@index([productId, sortOrder])
+  @@map("product_groups")
+}
+
+model ProductGroupOption {
+  id              String       @id @default(uuid()) @db.Uuid
+  productGroupId  String       @map("product_group_id") @db.Uuid
+  productId       String       @map("product_id") @db.Uuid
+  priceAdjustment Decimal      @default(0) @map("price_adjustment") @db.Decimal(10, 2)
+  sortOrder       Int          @default(0) @map("sort_order")
+  isDefault       Boolean      @default(false) @map("is_default")
+  isAvailable     Boolean      @default(true) @map("is_available")
+  productGroup    ProductGroup @relation(fields: [productGroupId], references: [id], onDelete: Cascade)
+  product         Product      @relation(fields: [productId], references: [id])
+
+  @@unique([productGroupId, productId])
+  @@index([productGroupId, isAvailable, sortOrder])
+  @@map("product_group_options")
+}
+
+model Ingredient {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  code               String                  @unique @db.Text
+  name               String                  @db.Text
+  description        String?                 @db.Text
+  isActive           Boolean                 @default(true) @map("is_active")
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  translations       IngredientTranslation[]
+  productIngredients ProductIngredient[]
+  modifierOptions    ModifierOption[]
+
+  @@map("ingredients")
+}
+
+model IngredientTranslation {
+  id           String     @id @default(uuid()) @db.Uuid
+  ingredientId String     @map("ingredient_id") @db.Uuid
+  locale       String     @db.Text
+  name         String     @db.Text
+  description  String?    @db.Text
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([ingredientId, locale])
+  @@index([ingredientId])
+  @@map("ingredient_translations")
+}
+
+model ProductIngredient {
+  id                    String           @id @default(uuid()) @db.Uuid
+  productId             String           @map("product_id") @db.Uuid
+  ingredientId          String           @map("ingredient_id") @db.Uuid
+  defaultQuantity       Int              @default(0) @map("default_quantity")
+  isDefaultIncluded     Boolean          @default(false) @map("is_default_included")
+  isRemovable           Boolean          @default(false) @map("is_removable")
+  removePriceAdjustment Decimal          @default(0) @map("remove_price_adjustment") @db.Decimal(10, 2)
+  allowExtra            Boolean          @default(false) @map("allow_extra")
+  extraUnitPrice        Decimal          @default(0) @map("extra_unit_price") @db.Decimal(10, 2)
+  maxExtraQuantity      Int              @default(0) @map("max_extra_quantity")
+  sortOrder             Int              @default(0) @map("sort_order")
+  isAvailable           Boolean          @default(true) @map("is_available")
+  product               Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  ingredient            Ingredient       @relation(fields: [ingredientId], references: [id])
+  modifierOptions       ModifierOption[]
+
+  @@unique([productId, ingredientId])
+  @@index([productId, isAvailable, sortOrder])
+  @@map("product_ingredients")
+}
+
+model ModifierGroup {
+  id            String             @id @default(uuid()) @db.Uuid
+  productId     String             @map("product_id") @db.Uuid
+  name          String             @db.Text
+  actionType    ModifierActionType @map("action_type")
+  selectionType SelectionMode      @map("selection_type")
+  minSelections Int                @default(0) @map("min_selections")
+  maxSelections Int                @default(1) @map("max_selections")
+  allowQuantity Boolean            @default(false) @map("allow_quantity")
+  sortOrder     Int                @default(0) @map("sort_order")
+  isRequired    Boolean            @default(false) @map("is_required")
+  product       Product            @relation(fields: [productId], references: [id], onDelete: Cascade)
+  options       ModifierOption[]
+
+  @@index([productId, sortOrder])
+  @@map("modifier_groups")
+}
+
+model ModifierOption {
+  id                  String             @id @default(uuid()) @db.Uuid
+  modifierGroupId     String             @map("modifier_group_id") @db.Uuid
+  ingredientId        String?            @map("ingredient_id") @db.Uuid
+  productIngredientId String?            @map("product_ingredient_id") @db.Uuid
+  priceAdjustment     Decimal            @default(0) @map("price_adjustment") @db.Decimal(10, 2)
+  maxQuantity         Int                @default(1) @map("max_quantity")
+  sortOrder           Int                @default(0) @map("sort_order")
+  isAvailable         Boolean            @default(true) @map("is_available")
+  modifierGroup       ModifierGroup      @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+  ingredient          Ingredient?        @relation(fields: [ingredientId], references: [id])
+  productIngredient   ProductIngredient? @relation(fields: [productIngredientId], references: [id])
+
+  @@index([modifierGroupId, isAvailable, sortOrder])
+  @@map("modifier_options")
+}
+
+model Basket {
+  id             String       @id @default(uuid()) @db.Uuid
+  sessionId      String       @map("session_id") @db.Uuid
+  status         BasketStatus
+  subtotalAmount Decimal      @default(0) @map("subtotal_amount") @db.Decimal(10, 2)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  items          BasketItem[]
+
+  @@index([sessionId, status])
+  @@map("baskets")
+}
+
+model BasketItem {
+  id                    String      @id @default(uuid()) @db.Uuid
+  basketId              String      @map("basket_id") @db.Uuid
+  menuProductId         String      @map("menu_product_id") @db.Uuid
+  productId             String      @map("product_id") @db.Uuid
+  productNameSnapshot   String      @map("product_name_snapshot") @db.Text
+  quantity              Int
+  unitPrice             Decimal     @map("unit_price") @db.Decimal(10, 2)
+  lineTotal             Decimal     @map("line_total") @db.Decimal(10, 2)
+  configurationSnapshot Json        @map("configuration_snapshot") @db.JsonB
+  createdAt             DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  basket                Basket      @relation(fields: [basketId], references: [id], onDelete: Cascade)
+  menuProduct           MenuProduct @relation(fields: [menuProductId], references: [id])
+  product               Product     @relation(fields: [productId], references: [id])
+
+  @@index([basketId])
+  @@index([menuProductId])
+  @@index([productId])
+  @@map("basket_items")
+}
+
+model Order {
+  id             String        @id @default(uuid()) @db.Uuid
+  restaurantId   String        @map("restaurant_id") @db.Uuid
+  orderNumber    String        @unique @map("order_number") @db.Text
+  status         OrderStatus
+  paymentStatus  PaymentStatus @map("payment_status")
+  subtotalAmount Decimal       @map("subtotal_amount") @db.Decimal(10, 2)
+  totalAmount    Decimal       @map("total_amount") @db.Decimal(10, 2)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurant     Restaurant    @relation(fields: [restaurantId], references: [id])
+  items          OrderItem[]
+  payment        Payment?
+
+  @@index([createdAt])
+  @@index([status, paymentStatus])
+  @@index([restaurantId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                    String       @id @default(uuid()) @db.Uuid
+  orderId               String       @map("order_id") @db.Uuid
+  menuProductId         String?      @map("menu_product_id") @db.Uuid
+  productId             String       @map("product_id") @db.Uuid
+  productName           String       @map("product_name") @db.Text
+  productType           ProductType  @map("product_type")
+  unitPrice             Decimal      @map("unit_price") @db.Decimal(10, 2)
+  quantity              Int
+  lineTotal             Decimal      @map("line_total") @db.Decimal(10, 2)
+  configurationSnapshot Json         @map("configuration_snapshot") @db.JsonB
+  order                 Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuProduct           MenuProduct? @relation(fields: [menuProductId], references: [id])
+  product               Product      @relation(fields: [productId], references: [id])
+
+  @@index([orderId])
+  @@index([menuProductId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+model Payment {
+  id                      String          @id @default(uuid()) @db.Uuid
+  orderId                 String          @unique @map("order_id") @db.Uuid
+  provider                PaymentProvider
+  providerSessionId       String          @unique @map("provider_session_id") @db.Text
+  providerPaymentIntentId String?         @map("provider_payment_intent_id") @db.Text
+  status                  PaymentStatus
+  amount                  Decimal         @db.Decimal(10, 2)
+  currency                String          @db.Text
+  createdAt               DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  order                   Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
+
+model AdminUser {
+  id           String         @id @default(uuid()) @db.Uuid
+  email        String         @unique @db.Text
+  passwordHash String         @map("password_hash") @db.Text
+  role         AdminRole      @default(ADMIN)
+  isActive     Boolean        @default(true) @map("is_active")
+  lastLoginAt  DateTime?      @map("last_login_at") @db.Timestamptz(6)
+  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions     AdminSession[]
+
+  @@map("admin_users")
+}
+
+model AdminSession {
+  id          String    @id @default(uuid()) @db.Uuid
+  adminUserId String    @map("admin_user_id") @db.Uuid
+  tokenId     String    @unique @map("token_id") @db.Uuid
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, expiresAt, revokedAt])
+  @@map("admin_sessions")
+}

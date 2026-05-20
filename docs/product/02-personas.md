@@ -6,16 +6,18 @@
 A customer using a self-service kiosk terminal in a restaurant to browse the menu, choose items, review the basket, and place an order.
 
 ### Goals
-- Find menu items quickly
+- Find products quickly
 - Browse products by category
-- Search for specific items
-- Review selected items before checkout
+- Search for specific products
+- Configure meals without confusion
+- Review selected products before checkout
 - Complete the order with minimal friction
 
 ### Needs
 - A clear and easy-to-use kiosk interface
 - Large, readable, touch-friendly controls
 - Fast navigation between categories and products
+- Guided meal selection and product personalization when required
 - A visible basket and order summary
 - Accessible interaction patterns, including strong contrast and clear focus states
 

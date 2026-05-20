@@ -44,8 +44,10 @@ Define the accessibility expectations for both the kiosk customer experience and
 - `NFR-A11Y-024`: The admin area shall be designed for web usage and should remain usable on common modern screens.
 
 ## MVP Accessibility Scope
-- `NFR-A11Y-025`: For the MVP, the core accessible flow shall support menu browsing, adding items to the basket, and reviewing the order summary before checkout.
+- `NFR-A11Y-025`: For the MVP, the core accessible flow shall support menu browsing, configuring products, adding them to the basket, and reviewing the order summary before checkout.
 - `NFR-A11Y-026`: Accessibility enhancements such as advanced contrast controls, theme customization, larger text improvements, and broader WCAG refinements may be expanded after the first MVP.
+- `NFR-A11Y-027`: The language selection control should be easy to find and usable through touch and keyboard interaction from the kiosk start screen.
+- `NFR-A11Y-028`: Translated headings, instructions, and status messages should remain concise and understandable for customers.
 
 ## Notes
 - Requirements `NFR-A11Y-009` and `NFR-A11Y-010` are included as recommended baseline accessibility assumptions because they align with good WCAG-oriented practice.
