@@ -6,6 +6,9 @@ on:
   push:
     branches: [main]
 
+env:
+  DATABASE_URL: postgresql://postgres:postgres@localhost:5432/food_kiosk_ci
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -19,12 +22,11 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: pnpm lint
 
   prisma-validate:
     runs-on: ubuntu-latest
-    env:
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/food_kiosk_ci
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -49,6 +51,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: pnpm typecheck
 
   test:
@@ -63,6 +66,7 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: pnpm test
 
   build:
@@ -77,4 +81,5 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate
       - run: pnpm build
