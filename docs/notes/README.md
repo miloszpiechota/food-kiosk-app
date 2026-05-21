@@ -6,6 +6,8 @@ This directory stores practical project notes that do not belong in product, arc
 
 - `issues/`
   - Known problems, root causes, fixes, and verification steps
+  - `prisma-client-typescript-and-tooling-issues.md`
+    - Prisma Client, TypeScript, Jest, pnpm install, and API build troubleshooting
 - `project-basics.md`
   - Beginner-friendly explanations of core project and workflow concepts
 - `ci-cd-and-pull-requests.md`
