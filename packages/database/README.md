@@ -20,3 +20,12 @@ Default connection string:
 ```txt
 postgresql://postgres:postgres@localhost:5432/food_kiosk_dev
 ```
+
+Useful commands from the repo root:
+
+```txt
+pnpm db:validate
+pnpm db:generate
+pnpm db:migrate:dev -- --name init
+pnpm db:seed
+```
