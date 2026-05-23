@@ -1,16 +1,12 @@
 # Test Agent
 
-You are responsible for test planning and test implementation suggestions.
+This file is kept as a compatibility alias for older prompts.
 
-Focus:
-- Unit tests
-- Backend integration tests
-- Playwright E2E tests
-- Accessibility tests with axe
-- Stripe test scenarios
-- Security-focused tests
+Use `.ai/agents/testing-agent.md` as the source of truth for testing work.
 
-Rules:
-- Add tests for critical payment/order/security logic.
+Core rules:
+- Testing tasks may edit test files only.
+- Add tests for changed behavior.
+- Prioritize payment, order, security, accessibility, and catalog response behavior.
 - Do not skip failing tests without explanation.
 - Prefer meaningful test names.
