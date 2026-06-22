@@ -466,6 +466,93 @@ async function main() {
         },
       },
     }),
+    largeFries: await prisma.product.create({
+      data: {
+        restaurantId: restaurant.id,
+        type: ProductType.ITEM,
+        sku: "fries-large",
+        name: "Large Fries",
+        description: "Large portion of lightly salted fries.",
+        basePrice: decimal("11.90"),
+        imageUrl: "/seed/fries-large.jpg",
+        isAvailable: true,
+        isStandaloneOrderable: false,
+        canBeMealOption: true,
+        sortOrder: 1,
+        translations: {
+          create: [
+            {
+              locale: "en",
+              name: "Large Fries",
+              description: "Large portion of lightly salted fries.",
+            },
+            {
+              locale: "pl",
+              name: "Duże frytki",
+              description: "Duża porcja lekko solonych frytek.",
+            },
+          ],
+        },
+      },
+    }),
+    largeCola: await prisma.product.create({
+      data: {
+        restaurantId: restaurant.id,
+        type: ProductType.ITEM,
+        sku: "drink-cola-large",
+        name: "Large Cola",
+        description: "Large chilled cola drink.",
+        basePrice: decimal("8.90"),
+        imageUrl: "/seed/cola-large.jpg",
+        isAvailable: true,
+        isStandaloneOrderable: false,
+        canBeMealOption: true,
+        sortOrder: 1,
+        translations: {
+          create: [
+            {
+              locale: "en",
+              name: "Large Cola",
+              description: "Large chilled cola drink.",
+            },
+            {
+              locale: "pl",
+              name: "Duża cola",
+              description: "Duża schłodzona cola.",
+            },
+          ],
+        },
+      },
+    }),
+    largeOrangeJuice: await prisma.product.create({
+      data: {
+        restaurantId: restaurant.id,
+        type: ProductType.ITEM,
+        sku: "drink-orange-juice-large",
+        name: "Large Orange Juice",
+        description: "Large fresh orange juice.",
+        basePrice: decimal("9.90"),
+        imageUrl: "/seed/orange-juice-large.jpg",
+        isAvailable: true,
+        isStandaloneOrderable: false,
+        canBeMealOption: true,
+        sortOrder: 2,
+        translations: {
+          create: [
+            {
+              locale: "en",
+              name: "Large Orange Juice",
+              description: "Large fresh orange juice.",
+            },
+            {
+              locale: "pl",
+              name: "Duży sok pomarańczowy",
+              description: "Duży świeży sok pomarańczowy.",
+            },
+          ],
+        },
+      },
+    }),
     burgerMeal: await prisma.product.create({
       data: {
         restaurantId: restaurant.id,
@@ -528,6 +615,11 @@ async function main() {
     }),
   };
 
+  await prisma.product.update({
+    where: { id: products.largeBurgerMeal.id },
+    data: { regularMealId: products.burgerMeal.id },
+  });
+
   const menuProducts = {
     burgerMeal: await prisma.menuProduct.create({
       data: {
@@ -544,7 +636,7 @@ async function main() {
         productId: products.largeBurgerMeal.id,
         menuPrice: decimal("31.90"),
         sortOrder: 2,
-        isVisible: true,
+        isVisible: false,
       },
     }),
     classicBurger: await prisma.menuProduct.create({
@@ -734,7 +826,6 @@ async function main() {
           productId: products.classicBurger.id,
           priceAdjustment: decimal("0"),
           sortOrder: 1,
-          isDefault: true,
           isAvailable: true,
         },
         {
@@ -742,58 +833,77 @@ async function main() {
           productId: products.cheeseBurger.id,
           priceAdjustment: decimal("1.50"),
           sortOrder: 2,
-          isDefault: false,
           isAvailable: true,
         },
       ],
     });
   }
 
-  for (const groupId of [burgerMealGroups.side.id, largeBurgerMealGroups.side.id]) {
-    await prisma.productGroupOption.createMany({
-      data: [
-        {
-          productGroupId: groupId,
-          productId: products.fries.id,
-          priceAdjustment: decimal("0"),
-          sortOrder: 1,
-          isDefault: true,
-          isAvailable: true,
-        },
-        {
-          productGroupId: groupId,
-          productId: products.sideSalad.id,
-          priceAdjustment: decimal("0.90"),
-          sortOrder: 2,
-          isDefault: false,
-          isAvailable: true,
-        },
-      ],
-    });
-  }
+  await prisma.productGroupOption.createMany({
+    data: [
+      {
+        productGroupId: burgerMealGroups.side.id,
+        productId: products.fries.id,
+        priceAdjustment: decimal("0"),
+        sortOrder: 1,
+        isAvailable: true,
+      },
+      {
+        productGroupId: burgerMealGroups.side.id,
+        productId: products.sideSalad.id,
+        priceAdjustment: decimal("0.90"),
+        sortOrder: 2,
+        isAvailable: true,
+      },
+      {
+        productGroupId: largeBurgerMealGroups.side.id,
+        productId: products.largeFries.id,
+        priceAdjustment: decimal("0"),
+        sortOrder: 1,
+        isAvailable: true,
+      },
+      {
+        productGroupId: largeBurgerMealGroups.side.id,
+        productId: products.sideSalad.id,
+        priceAdjustment: decimal("0.90"),
+        sortOrder: 2,
+        isAvailable: true,
+      },
+    ],
+  });
 
-  for (const groupId of [burgerMealGroups.drink.id, largeBurgerMealGroups.drink.id]) {
-    await prisma.productGroupOption.createMany({
-      data: [
-        {
-          productGroupId: groupId,
-          productId: products.cola.id,
-          priceAdjustment: decimal("0"),
-          sortOrder: 1,
-          isDefault: true,
-          isAvailable: true,
-        },
-        {
-          productGroupId: groupId,
-          productId: products.orangeJuice.id,
-          priceAdjustment: decimal("1.20"),
-          sortOrder: 2,
-          isDefault: false,
-          isAvailable: true,
-        },
-      ],
-    });
-  }
+  await prisma.productGroupOption.createMany({
+    data: [
+      {
+        productGroupId: burgerMealGroups.drink.id,
+        productId: products.cola.id,
+        priceAdjustment: decimal("0"),
+        sortOrder: 1,
+        isAvailable: true,
+      },
+      {
+        productGroupId: burgerMealGroups.drink.id,
+        productId: products.orangeJuice.id,
+        priceAdjustment: decimal("1.20"),
+        sortOrder: 2,
+        isAvailable: true,
+      },
+      {
+        productGroupId: largeBurgerMealGroups.drink.id,
+        productId: products.largeCola.id,
+        priceAdjustment: decimal("0"),
+        sortOrder: 1,
+        isAvailable: true,
+      },
+      {
+        productGroupId: largeBurgerMealGroups.drink.id,
+        productId: products.largeOrangeJuice.id,
+        priceAdjustment: decimal("1.20"),
+        sortOrder: 2,
+        isAvailable: true,
+      },
+    ],
+  });
 
   const classicBurgerIngredients = {
     bun: await prisma.productIngredient.create({

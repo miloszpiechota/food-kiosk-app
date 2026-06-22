@@ -333,8 +333,6 @@ Initial catalog placement:
 
 At read and basket-write time, the system must verify:
 
-At read and basket-write time, the system must verify:
-
 - meal product availability
 - group availability through its active configuration
 - option-level availability
@@ -365,17 +363,20 @@ The meal builder must:
 - product-group options
 - option price adjustments and defaults
 - seed examples for a burger meal and large burger meal
+- explicit regular-to-large meal database relationship
 - backend product-detail response containing groups and options
+- nested item customization data for meal-group options
 - basket and order configuration snapshot fields
+- backend meal-group and modifier validation
+- backend-authoritative meal surcharge pricing
+- basket creation and configured basket-item write endpoints
+- configuration-aware basket-item merging
 
 ### Planned
 
 - frontend consumption of the database-backed catalog
 - meal-builder controls on Product Details
 - configuration state and validation
-- nested personalization decisions
-- basket creation and item-write endpoints
-- backend configuration validation and pricing
 - configuration-aware basket display and editing
 - checkout and order snapshot creation
 

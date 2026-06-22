@@ -2,9 +2,9 @@
 
 ## Status
 
-Draft architecture for review.
+Implemented backend foundation with planned frontend integration.
 
-The database and read-side catalog foundation partially exist. Basket writes, authoritative configuration validation, and frontend integration remain planned.
+The database relationship, read-side catalog contract, basket writes, authoritative configuration validation, pricing, and snapshots are implemented. Frontend meal-builder integration remains planned.
 
 ## Goal
 
@@ -64,9 +64,9 @@ The large meal has its own:
 - option surcharges
 - availability
 
-The two products require an explicit relationship. The current schema does not yet contain that relationship.
+The two products use an explicit self-relation.
 
-Recommended initial schema direction:
+Implemented schema direction:
 
 ```prisma
 model Product {
@@ -83,8 +83,6 @@ Application validation must enforce:
 - the referenced product must be `MEAL`
 - both products belong to the same restaurant
 - a regular meal has at most one linked large meal in the initial implementation
-
-The exact field and relation names may change during implementation.
 
 ### Product Group Template
 
@@ -159,16 +157,13 @@ The response already includes:
 - ingredients
 - modifier groups
 
-Recommended additions before frontend integration:
+The catalog response includes:
 
 - option product image
 - option product type
-- option availability result
 - stable machine-readable group code
-- optional customer-facing group description
 - linked large-meal summary for regular meals
-
-The final additions depend on UI requirements.
+- option-level ingredients and modifier groups
 
 ## Proposed Configuration Contract
 
@@ -232,9 +227,10 @@ Using `productGroupOptionId` lets the backend validate group membership and read
 
 ## Basket Write Flow
 
-Proposed route:
+Implemented routes:
 
 ```text
+POST /api/v1/kiosk/baskets
 POST /api/v1/kiosk/baskets/:basketId/items
 ```
 
@@ -451,13 +447,10 @@ Other useful error codes:
 - backend field errors appear on the correct group
 - keyboard operation works for every group
 
-## Implementation Sequence
+## Remaining Implementation Sequence
 
-1. Confirm the decisions listed in the product requirements.
-2. Finalize the API configuration DTO.
-3. Add backend validators and pricing service with tests.
-4. Implement basket creation and basket-item writes.
-5. Connect the frontend catalog to database-backed APIs.
-6. Build Product Details group controls.
-7. Add configuration-aware basket summary and editing.
-8. Persist immutable order snapshots at checkout.
+1. Connect the frontend catalog to database-backed APIs.
+2. Build Product Details group controls.
+3. Add regular/large size selection.
+4. Add configuration-aware basket summary and editing.
+5. Persist immutable order snapshots at checkout.

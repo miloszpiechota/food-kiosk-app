@@ -31,6 +31,8 @@ Examples:
 - `POST /api/v1/kiosk/baskets`
 - `POST /api/v1/kiosk/baskets/:basketId/items`
 
+Implemented basket writes validate meal groups and modifiers, calculate prices on the backend, store versioned configuration snapshots, and merge only matching normalized configurations.
+
 This keeps the customer ordering flow isolated from admin behavior.
 
 ### Admin

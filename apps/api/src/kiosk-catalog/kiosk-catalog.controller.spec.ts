@@ -107,6 +107,8 @@ describe('KioskCatalogController', () => {
       groups: [],
       ingredients: [],
       modifierGroups: [],
+      regularMeal: null,
+      largeMeal: null,
     };
     service.getMenuProductDetail.mockResolvedValue(response);
 
