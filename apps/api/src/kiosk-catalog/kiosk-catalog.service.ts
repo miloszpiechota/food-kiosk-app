@@ -6,6 +6,7 @@ import {
   MenuCategoryProductsResponse,
   MenuProductDetailResponse,
   MenuProductSummary,
+  ProductLabelResponse,
 } from './kiosk-catalog.types';
 
 interface TranslationFields {
@@ -440,6 +441,7 @@ export class KioskCatalogService {
         sku: string;
         name: string;
         description: string | null;
+        label: string | null;
         basePrice: DecimalLike;
         imageUrl: string | null;
         translations: readonly TranslationFields[];
@@ -463,6 +465,7 @@ export class KioskCatalogService {
       sku: menuProduct.product.sku,
       name: text.name,
       description: text.description,
+      label: this.formatProductLabel(menuProduct.product.label),
       price: this.formatDecimal(
         menuProduct.menuPrice ?? menuProduct.product.basePrice,
       ),
@@ -522,5 +525,20 @@ export class KioskCatalogService {
 
   private formatDecimal(value: DecimalLike): string {
     return value.toString();
+  }
+
+  private formatProductLabel(
+    label: string | null,
+  ): ProductLabelResponse | null {
+    switch (label) {
+      case 'POPULAR':
+        return 'Popular';
+      case 'NEW':
+        return 'New';
+      case 'VEGETARIAN':
+        return 'Vegetarian';
+      default:
+        return null;
+    }
   }
 }

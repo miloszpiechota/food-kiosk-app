@@ -37,7 +37,7 @@ export interface Product {
   portionGrams: number;
   category: CategoryId;
   image: string;
-  label?: ProductLabel;
+  label: ProductLabel | null;
 }
 
 export interface MenuCategory {

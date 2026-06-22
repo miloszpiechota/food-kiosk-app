@@ -97,6 +97,7 @@ describe('KioskCatalogController', () => {
       sku: 'burger',
       name: 'Burger',
       description: null,
+      label: 'Popular' as const,
       price: '12.00',
       currencyCode: 'PLN',
       imageUrl: null,

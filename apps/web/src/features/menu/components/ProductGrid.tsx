@@ -14,6 +14,7 @@ interface ProductGridProps {
   products: Product[];
   searchTerm: string;
   onAddToCart: (product: Product) => void;
+  onViewProductDetails: (product: Product) => void;
 }
 
 export function ProductGrid({
@@ -22,12 +23,14 @@ export function ProductGrid({
   products,
   searchTerm,
   onAddToCart,
+  onViewProductDetails,
 }: ProductGridProps) {
   if (activeCategory.id === "featured" && !searchTerm.trim()) {
     return (
       <FeaturedProductGrid
         content={featuredContent}
         onAddToCart={onAddToCart}
+        onViewProductDetails={onViewProductDetails}
       />
     );
   }
@@ -48,6 +51,7 @@ export function ProductGrid({
             key={product.id}
             product={product}
             onAddToCart={onAddToCart}
+            onViewDetails={onViewProductDetails}
           />
         ))}
       </section>
@@ -71,11 +75,13 @@ export function ProductGrid({
 interface FeaturedProductGridProps {
   content: FeaturedMenuContent;
   onAddToCart: (product: Product) => void;
+  onViewProductDetails: (product: Product) => void;
 }
 
 function FeaturedProductGrid({
   content,
   onAddToCart,
+  onViewProductDetails,
 }: FeaturedProductGridProps) {
   return (
     <main className="min-h-0 flex-1 overflow-y-auto pb-48">
@@ -95,16 +101,16 @@ function FeaturedProductGrid({
 
         <FeaturedProductSection
           title="New this week"
-          description="A rotating sample of fresh mock products for the kiosk preview."
           products={content.newProducts}
           onAddToCart={onAddToCart}
+          onViewProductDetails={onViewProductDetails}
         />
 
         <FeaturedProductSection
           title="Best recommendations for you"
-          description="Popular combinations and high-confidence suggestions for first-time visitors."
           products={content.recommendedProducts}
           onAddToCart={onAddToCart}
+          onViewProductDetails={onViewProductDetails}
         />
       </div>
     </main>
@@ -117,22 +123,20 @@ interface FeaturedBannerProps {
 
 function FeaturedHeroBanner({ banner }: FeaturedBannerProps) {
   return (
-    <section className="relative min-h-72 overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-black/20">
+    <section className="image-banner relative isolate min-h-72 overflow-hidden rounded-3xl bg-background">
       <img
         src={banner.image}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 size-full object-cover"
+        className="absolute -inset-px size-[calc(100%+2px)] max-w-none object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-r from-background via-background/75 to-background/20" />
       <div className="relative max-w-2xl p-7 sm:p-10">
-        <p className="mb-4 w-fit rounded-full border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-bold uppercase tracking-[0.14em] text-primary">
-          For You
-        </p>
+        
         <h2 className="text-5xl font-bold leading-tight text-foreground">
           {banner.title}
         </h2>
-        <p className="mt-4 text-xl text-muted-foreground">
+        <p className="mt-4 text-xl text-white">
           {banner.description}
         </p>
       </div>
@@ -142,20 +146,18 @@ function FeaturedHeroBanner({ banner }: FeaturedBannerProps) {
 
 function FeaturedSmallBanner({ banner }: FeaturedBannerProps) {
   return (
-    <article className="relative min-h-44 overflow-hidden rounded-3xl border border-border bg-card shadow-xl shadow-black/10">
+    <article className="image-banner relative isolate min-h-44 overflow-hidden rounded-3xl bg-background">
       <img
         src={banner.image}
         alt=""
         aria-hidden="true"
-        className="absolute inset-0 size-full object-cover"
+        className="absolute -inset-px size-[calc(100%+2px)] max-w-none object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/10" />
       <div className="relative p-6">
-        <p className="mb-3 w-fit rounded-full border border-primary/40 bg-primary/15 px-4 py-2 text-sm font-bold uppercase tracking-[0.14em] text-primary">
-          Highlight
-        </p>
+        
         <h3 className="text-3xl font-bold text-foreground">{banner.title}</h3>
-        <p className="mt-2 max-w-md text-base text-muted-foreground">
+        <p className="mt-2 max-w-md text-base text-white">
           {banner.description}
         </p>
       </div>
@@ -172,7 +174,7 @@ function QuickFilterRow({ filters }: QuickFilterRowProps) {
     <section aria-label="Fast menu filters" className="space-y-4">
       <div>
         <h2 className="text-3xl font-bold text-foreground">Explore quickly</h2>
-        <p className="mt-1 text-base text-muted-foreground">
+        <p className="mt-1 text-base text-muted-foreground  text-white">
           Jump to common preferences and dietary options.
         </p>
       </div>
@@ -192,17 +194,17 @@ function QuickFilterRow({ filters }: QuickFilterRowProps) {
 }
 
 interface FeaturedProductSectionProps {
-  description: string;
   products: Product[];
   title: string;
   onAddToCart: (product: Product) => void;
+  onViewProductDetails: (product: Product) => void;
 }
 
 function FeaturedProductSection({
-  description,
   products,
   title,
   onAddToCart,
+  onViewProductDetails,
 }: FeaturedProductSectionProps) {
   const headingId = `${title.toLowerCase().replaceAll(" ", "-")}-heading`;
 
@@ -212,7 +214,6 @@ function FeaturedProductSection({
         <h2 id={headingId} className="text-3xl font-bold text-foreground">
           {title}
         </h2>
-        <p className="mt-1 text-base text-muted-foreground">{description}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
@@ -221,6 +222,7 @@ function FeaturedProductSection({
             key={product.id}
             product={product}
             onAddToCart={onAddToCart}
+            onViewDetails={onViewProductDetails}
           />
         ))}
       </div>

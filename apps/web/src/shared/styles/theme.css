@@ -97,3 +97,79 @@
     font-family: var(--font-family);
   }
 }
+
+@layer components {
+  .image-banner {
+    clip-path: inset(0 round 1.5rem);
+  }
+
+  .image-banner::after {
+    position: absolute;
+    z-index: 20;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--background);
+    content: "";
+    pointer-events: none;
+  }
+
+  .product-label {
+    display: inline-flex;
+    min-height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid;
+    border-radius: 9999px;
+    padding: 0.4375rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+  }
+
+  .product-label--popular {
+    border-color: rgba(125, 211, 252, 0.95);
+    background: linear-gradient(
+      135deg,
+      rgba(2, 132, 199, 0.92),
+      rgba(29, 78, 216, 0.82)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      0 0 0 1px rgba(3, 7, 18, 0.35),
+      0 8px 24px rgba(14, 165, 233, 0.48);
+    color: #ffffff;
+  }
+
+  .product-label--new {
+    border-color: rgba(253, 224, 71, 0.98);
+    background: linear-gradient(
+      135deg,
+      rgba(217, 119, 6, 0.94),
+      rgba(202, 138, 4, 0.84)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 0 0 1px rgba(3, 7, 18, 0.35),
+      0 8px 24px rgba(245, 158, 11, 0.5);
+    color: #ffffff;
+  }
+
+  .product-label--vegetarian {
+    border-color: rgba(110, 231, 183, 0.98);
+    background: linear-gradient(
+      135deg,
+      rgba(5, 150, 105, 0.94),
+      rgba(4, 120, 87, 0.84)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      0 0 0 1px rgba(3, 7, 18, 0.35),
+      0 8px 24px rgba(16, 185, 129, 0.48);
+    color: #ffffff;
+  }
+}

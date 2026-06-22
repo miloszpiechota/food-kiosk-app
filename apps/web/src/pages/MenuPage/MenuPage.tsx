@@ -25,6 +25,7 @@ interface MenuPageProps {
   onAddToCart: (product: Product) => void;
   onCategoryChange: (category: CategoryId) => void;
   onOrderModeToggle: () => void;
+  onProductDetailsOpen: (product: Product) => void;
   onSearchChange: (value: string) => void;
 }
 
@@ -41,6 +42,7 @@ export function MenuPage({
   onAddToCart,
   onCategoryChange,
   onOrderModeToggle,
+  onProductDetailsOpen,
   onSearchChange,
 }: MenuPageProps) {
   return (
@@ -64,6 +66,7 @@ export function MenuPage({
           products={products}
           searchTerm={searchTerm}
           onAddToCart={onAddToCart}
+          onViewProductDetails={onProductDetailsOpen}
         />
       </div>
 

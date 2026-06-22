@@ -23,6 +23,13 @@ describe("cart store", () => {
     expect(secondCart[0].quantity).toBe(2);
   });
 
+  it("adds a selected quantity of a product", () => {
+    const cart = addProductToCart([], products[0], 3);
+
+    expect(cart).toHaveLength(1);
+    expect(cart[0].quantity).toBe(3);
+  });
+
   it("summarizes cart item count and total in cents", () => {
     const cart = addProductToCart(addProductToCart([], products[0]), products[2]);
 

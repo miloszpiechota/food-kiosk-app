@@ -28,6 +28,7 @@ const MENU_PRODUCTS: Product[] = [
     category: "sandwiches",
     image:
       "https://images.unsplash.com/photo-1619740455993-8c891b3c69ca?w=400&h=400&fit=crop",
+    label: null,
   },
   {
     id: "3",
@@ -63,6 +64,7 @@ const MENU_PRODUCTS: Product[] = [
     category: "drinks",
     image:
       "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=400&fit=crop",
+    label: null,
   },
   {
     id: "6",
@@ -86,6 +88,7 @@ const MENU_PRODUCTS: Product[] = [
     category: "sides",
     image:
       "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&h=400&fit=crop",
+    label: null,
   },
   {
     id: "8",
@@ -109,6 +112,7 @@ const MENU_PRODUCTS: Product[] = [
     category: "coffee",
     image:
       "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&h=400&fit=crop",
+    label: null,
   },
   {
     id: "10",
@@ -120,6 +124,7 @@ const MENU_PRODUCTS: Product[] = [
     category: "bakery",
     image:
       "https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=400&h=400&fit=crop",
+    label: null,
   },
   {
     id: "11",
@@ -131,6 +136,7 @@ const MENU_PRODUCTS: Product[] = [
     category: "drinks",
     image:
       "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=400&fit=crop",
+    label: null,
   },
   {
     id: "12",
@@ -142,6 +148,7 @@ const MENU_PRODUCTS: Product[] = [
     category: "desserts",
     image:
       "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=400&fit=crop",
+    label: null,
   },
   {
     id: "13",

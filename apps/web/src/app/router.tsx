@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { WelcomePage } from "../pages/WelcomePage/WelcomePage";
 import { MenuPage } from "../pages/MenuPage/MenuPage";
+import { ProductDetailsPage } from "../pages/ProductDetailsPage/ProductDetailsPage";
 import type { Product } from "../features/menu/types/menu.types";
 import type { CartItem } from "../features/cart/types/cart.types";
 import {
@@ -10,7 +11,7 @@ import {
 import { useMenu } from "../features/menu/hooks/useMenu";
 import type { CategoryId } from "../features/menu/types/menu.types";
 
-type AppRoute = "welcome" | "menu";
+type AppRoute = "welcome" | "menu" | "product-details";
 export type OrderMode = "dine-in" | "take-out";
 
 function getOppositeOrderMode(orderMode: OrderMode): OrderMode {
@@ -24,6 +25,7 @@ export function AppRouter() {
     useState<CategoryId>("featured");
   const [searchTerm, setSearchTerm] = useState("");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   const menu = useMenu({ activeCategory, searchTerm });
   const cartSummary = useMemo(() => getCartSummary(cartItems), [cartItems]);
@@ -33,16 +35,43 @@ export function AppRouter() {
     setRoute("menu");
   };
 
-  const handleAddToCart = (product: Product) => {
-    setCartItems((currentItems) => addProductToCart(currentItems, product));
+  const handleAddToCart = (product: Product, quantity = 1) => {
+    setCartItems((currentItems) =>
+      addProductToCart(currentItems, product, quantity),
+    );
   };
 
   const handleOrderModeToggle = () => {
     setOrderMode((currentMode) => getOppositeOrderMode(currentMode));
   };
 
+  const handleProductDetailsOpen = (product: Product) => {
+    setSelectedProduct(product);
+    setRoute("product-details");
+  };
+
+  const handleProductDetailsClose = () => {
+    setRoute("menu");
+  };
+
   if (route === "welcome") {
     return <WelcomePage onSelectOrderMode={handleOrderModeSelect} />;
+  }
+
+  if (route === "product-details" && selectedProduct) {
+    return (
+      <ProductDetailsPage
+        cartItems={cartItems}
+        cartSummary={cartSummary}
+        orderMode={orderMode}
+        product={selectedProduct}
+        searchTerm={searchTerm}
+        onAddToCart={handleAddToCart}
+        onBack={handleProductDetailsClose}
+        onOrderModeToggle={handleOrderModeToggle}
+        onSearchChange={setSearchTerm}
+      />
+    );
   }
 
   return (
@@ -59,6 +88,7 @@ export function AppRouter() {
       onAddToCart={handleAddToCart}
       onCategoryChange={setActiveCategory}
       onOrderModeToggle={handleOrderModeToggle}
+      onProductDetailsOpen={handleProductDetailsOpen}
       onSearchChange={setSearchTerm}
     />
   );

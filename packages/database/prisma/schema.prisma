@@ -16,6 +16,14 @@ enum ProductType {
   @@map("product_type")
 }
 
+enum ProductLabel {
+  POPULAR    @map("popular")
+  NEW        @map("new")
+  VEGETARIAN @map("vegetarian")
+
+  @@map("product_label")
+}
+
 enum SelectionMode {
   SINGLE   @map("single")
   MULTIPLE @map("multiple")
@@ -170,6 +178,7 @@ model Product {
   sku                   String               @db.Text
   name                  String               @db.Text
   description           String?              @db.Text
+  label                 ProductLabel?
   basePrice             Decimal              @map("base_price") @db.Decimal(10, 2)
   imageUrl              String?              @map("image_url") @db.Text
   isAvailable           Boolean              @default(true) @map("is_available")

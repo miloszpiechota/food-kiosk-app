@@ -25,6 +25,14 @@ describe("menu api helpers", () => {
     expect(content.recommendedProducts).toHaveLength(3);
   });
 
+  it("uses the same nullable product label contract as the catalog API", () => {
+    const products = getMenuProducts();
+
+    expect(products.every((product) => "label" in product)).toBe(true);
+    expect(products.some((product) => product.label === null)).toBe(true);
+    expect(products.some((product) => product.label === "Popular")).toBe(true);
+  });
+
   it("shows new and popular products for the featured category search surface", () => {
     const products = filterMenuProducts(getMenuProducts(), "featured", "");
 

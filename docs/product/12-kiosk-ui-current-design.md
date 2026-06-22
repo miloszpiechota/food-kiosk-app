@@ -14,6 +14,7 @@ Implemented in the current frontend design:
 - Mock menu categories and mock product data
 - Featured `For You` menu area
 - Product cards
+- Product details page
 - Cart summary footer
 - Accessibility and language utility buttons
 - Basic add-to-cart visual feedback
@@ -24,6 +25,8 @@ Not implemented yet:
 - Checkout flow
 - Payment flow
 - Backend-connected product catalog in the frontend
+- Product ingredient customization
+- Meal-builder required option groups
 - Advanced accessibility settings panel
 - Real language switching
 
@@ -146,6 +149,31 @@ Design behavior:
   - short pulse
   - temporary check icon
 - The animation confirms the action without making the kiosk feel busy.
+
+## Product Details Page
+The product details page gives the customer a focused view before adding an item to the order.
+
+Current elements:
+
+- Large product image
+- Back button
+- Optional product label
+- Product name
+- Full product description
+- Price
+- Kcal value
+- Portion size in grams
+- Quantity stepper
+- Total price for selected quantity
+- `Add to order` button
+- Cart footer remains visible
+
+Design behavior:
+
+- Product cards open this page through the `Details` button.
+- The quantity stepper supports a minimum of 1 and a maximum of 9.
+- Adding to order adds the selected quantity and returns the customer to the menu.
+- The page does not yet support ingredient customization or required meal-builder selections.
 
 ## Cart Footer
 The cart footer is fixed at the bottom of the menu screen.

@@ -30,11 +30,14 @@ export interface MenuProductSummary {
   sku: string;
   name: string;
   description: string | null;
+  label: ProductLabelResponse | null;
   price: string;
   currencyCode: string;
   imageUrl: string | null;
   sortOrder: number;
 }
+
+export type ProductLabelResponse = 'Popular' | 'New' | 'Vegetarian';
 
 export interface MenuCategoryProductsResponse {
   menuCategoryId: string;

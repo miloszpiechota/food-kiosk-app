@@ -220,3 +220,5 @@ Reason:
 - this order matches the primary kiosk journey
 - it lets the frontend browse real catalog data before checkout logic starts
 - it keeps payment and admin work off the critical path for the first functional slice
+
+Detailed meal configuration, basket validation, pricing, and snapshot design is documented in [Meal Builder Architecture](./09-meal-builder-design.md).

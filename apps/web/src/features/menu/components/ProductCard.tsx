@@ -3,13 +3,19 @@ import { Check, Plus } from "lucide-react";
 import type { Product } from "../types/menu.types";
 import { focusRing } from "../../../shared/components/IconButton";
 import { Price } from "../../../shared/components/Price";
+import { ProductLabelBadge } from "./ProductLabelBadge";
 
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
+  onViewDetails: (product: Product) => void;
 }
 
-export function ProductCard({ product, onAddToCart }: ProductCardProps) {
+export function ProductCard({
+  product,
+  onAddToCart,
+  onViewDetails,
+}: ProductCardProps) {
   const [isAddConfirmed, setIsAddConfirmed] = useState(false);
   const confirmationTimeoutRef = useRef<number | undefined>(undefined);
 
@@ -29,7 +35,14 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
   }
 
   return (
-    <article className="group overflow-hidden rounded-3xl border border-border bg-card shadow-lg shadow-black/10 transition hover:border-primary/40">
+    <article className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lg shadow-black/10 transition hover:border-primary/40">
+      <button
+        type="button"
+        onClick={() => onViewDetails(product)}
+        aria-label={`View details for ${product.name}`}
+        className={`absolute inset-0 z-10 rounded-3xl ${focusRing}`}
+      />
+
       <div className="relative aspect-[4/3] overflow-hidden bg-muted">
         <img
           src={product.image}
@@ -37,17 +50,10 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
           className="size-full object-cover transition duration-300 group-hover:scale-105"
         />
         {product.label && (
-          <span
-            className={`absolute right-3 top-3 rounded-full px-3 py-1 text-sm font-bold ${
-              product.label === "Popular"
-                ? "bg-primary text-primary-foreground"
-                : product.label === "New"
-                  ? "bg-secondary text-secondary-foreground"
-                  : "bg-emerald-600 text-white"
-            }`}
-          >
-            {product.label}
-          </span>
+          <ProductLabelBadge
+            label={product.label}
+            className="absolute right-3 top-3"
+          />
         )}
       </div>
 
@@ -60,17 +66,14 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
         </span>
       </div>
 
-      <div className="flex min-h-56 flex-col gap-4 p-5">
-        <div className="min-w-0 flex-1">
-          <h3 className="text-xl font-semibold leading-tight text-foreground">
+      <div className="flex h-40 shrink-0 flex-col p-5">
+        <div className="min-w-0">
+          <h3 className="line-clamp-2 min-h-12 text-xl font-semibold leading-6 text-foreground">
             {product.name}
           </h3>
-          <p className="mt-2 line-clamp-2 text-base text-muted-foreground">
-            {product.description}
-          </p>
         </div>
 
-        <div className="flex items-center justify-between gap-4">
+        <div className="mt-auto flex items-center justify-between gap-4">
           <Price
             cents={product.priceCents}
             className="shrink-0 text-2xl font-bold text-foreground"
@@ -79,7 +82,7 @@ export function ProductCard({ product, onAddToCart }: ProductCardProps) {
             type="button"
             onClick={handleAddToCart}
             aria-label={`Add ${product.name} to cart`}
-            className={`relative flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary text-primary-foreground transition duration-200 hover:bg-primary/90 active:scale-95 ${
+            className={`relative z-20 flex size-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary text-primary-foreground transition duration-200 hover:bg-primary/90 active:scale-95 ${
               isAddConfirmed ? "scale-105 shadow-lg shadow-primary/30" : ""
             } ${focusRing}`}
           >
