@@ -1,7 +1,12 @@
-import type { Product } from "../../menu/types/menu.types";
-
-export interface CartItem extends Product {
+export interface CartItem {
+  id: string;
+  menuProductId: string;
+  productId: string;
+  name: string;
   quantity: number;
+  unitPriceCents: number;
+  lineTotalCents: number;
+  configuration: unknown;
 }
 
 export interface CartSummary {

@@ -1,62 +1,106 @@
-import { describe, expect, it } from "vitest";
-import {
-  filterMenuProducts,
-  getFeaturedMenuContent,
-  getMenuCategories,
-  getMenuProducts,
-} from "./menuApi";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { Product } from "../types/menu.types";
+import { filterMenuProducts, getCatalog } from "./menuApi";
 
-describe("menu api helpers", () => {
-  it("prepends a frontend-owned featured category", () => {
-    const categories = getMenuCategories();
+const products: Product[] = [
+  {
+    id: "menu-product-1",
+    menuProductId: "menu-product-1",
+    productId: "product-1",
+    type: "MEAL",
+    name: "Burger Meal",
+    description: "Burger, side, and drink",
+    priceCents: 2000,
+    category: "category-meals",
+    image: "image",
+    label: "Popular",
+    hasCustomizations: true,
+  },
+  {
+    id: "menu-product-2",
+    menuProductId: "menu-product-2",
+    productId: "product-2",
+    type: "ITEM",
+    name: "Cola",
+    description: "Cold drink",
+    priceCents: 500,
+    category: "category-drinks",
+    image: "image",
+    label: null,
+    hasCustomizations: false,
+  },
+];
 
-    expect(categories[0]).toMatchObject({
-      id: "featured",
-      label: "For You",
-    });
-  });
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
-  it("provides featured menu landing content", () => {
-    const content = getFeaturedMenuContent();
-
-    expect(content.secondaryBanners).toHaveLength(2);
-    expect(content.quickFilters).toContain("Plant Based");
-    expect(content.newProducts).toHaveLength(3);
-    expect(content.recommendedProducts).toHaveLength(3);
-  });
-
-  it("uses the same nullable product label contract as the catalog API", () => {
-    const products = getMenuProducts();
-
-    expect(products.every((product) => "label" in product)).toBe(true);
-    expect(products.some((product) => product.label === null)).toBe(true);
-    expect(products.some((product) => product.label === "Popular")).toBe(true);
-  });
-
-  it("shows new and popular products for the featured category search surface", () => {
-    const products = filterMenuProducts(getMenuProducts(), "featured", "");
-
-    expect(products.length).toBeGreaterThan(0);
+describe("menu API", () => {
+  it("filters backend products by category and search term", () => {
     expect(
-      products.every(
-        (product) => product.label === "Popular" || product.label === "New",
+      filterMenuProducts(products, "category-drinks", "cold").map(
+        (product) => product.name,
       ),
-    ).toBe(true);
+    ).toEqual(["Cola"]);
   });
 
-  it("shows popular products for the popular category", () => {
-    const products = filterMenuProducts(getMenuProducts(), "popular", "");
-
-    expect(products.length).toBeGreaterThan(0);
-    expect(products.every((product) => product.label === "Popular")).toBe(true);
+  it("includes meals and highlighted products on the featured surface", () => {
+    expect(
+      filterMenuProducts(products, "featured", "").map(
+        (product) => product.name,
+      ),
+    ).toEqual(["Burger Meal"]);
   });
 
-  it("filters products by active category and search term", () => {
-    const products = filterMenuProducts(getMenuProducts(), "coffee", "espresso");
+  it("loads active menu, categories, and category products", async () => {
+    const responses = [
+      { id: "menu-1", currencyCode: "PLN" },
+      {
+        categories: [
+          {
+            menuCategoryId: "category-meals",
+            categoryId: "category-1",
+            code: "meals",
+            name: "Meals",
+            description: null,
+            sortOrder: 1,
+          },
+        ],
+      },
+      {
+        products: [
+          {
+            menuProductId: "menu-product-1",
+            productId: "product-1",
+            type: "MEAL",
+            name: "Burger Meal",
+            description: "Choose your meal",
+            label: "Popular",
+            price: "20.00",
+            imageUrl: null,
+            hasCustomizations: true,
+          },
+        ],
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      const body = responses.shift();
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
 
-    expect(products.map((product) => product.name)).toEqual([
-      "Cappuccino",
-      "Latte",
-    ]);
+    const catalog = await getCatalog();
+
+    expect(catalog.categories[0].id).toBe("featured");
+    expect(catalog.categories[1]).toMatchObject({
+      id: "category-meals",
+      label: "Meals",
+    });
+    expect(catalog.products[0]).toMatchObject({
+      menuProductId: "menu-product-1",
+      priceCents: 2000,
+    });
   });
 });

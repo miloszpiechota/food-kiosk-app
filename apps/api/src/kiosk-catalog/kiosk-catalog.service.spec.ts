@@ -28,8 +28,13 @@ describe('KioskCatalogService', () => {
                 description: 'Single beef burger.',
                 label: 'POPULAR',
                 basePrice: { toString: () => '18.90' },
-                imageUrl: '/seed/classic-burger.jpg',
+                imageUrl:
+                  'https://images.pexels.com/photos/19247565/pexels-photo-19247565.jpeg',
                 translations: [],
+                _count: {
+                  productGroups: 0,
+                  modifierGroups: 1,
+                },
               },
             },
             {
@@ -45,8 +50,13 @@ describe('KioskCatalogService', () => {
                 description: 'Beef burger with cheese.',
                 label: null,
                 basePrice: { toString: () => '20.90' },
-                imageUrl: '/seed/cheese-burger.jpg',
+                imageUrl:
+                  'https://images.pexels.com/photos/19247565/pexels-photo-19247565.jpeg',
                 translations: [],
+                _count: {
+                  productGroups: 0,
+                  modifierGroups: 0,
+                },
               },
             },
           ],
@@ -64,5 +74,8 @@ describe('KioskCatalogService', () => {
       'Popular',
       null,
     ]);
+    expect(
+      response.products.map((product) => product.hasCustomizations),
+    ).toEqual([true, false]);
   });
 });

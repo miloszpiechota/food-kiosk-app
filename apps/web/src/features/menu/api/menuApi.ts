@@ -1,287 +1,288 @@
 import type {
-  CategoryId,
+  CategoryIcon,
   FeaturedMenuContent,
   MenuCategory,
   Product,
+  ProductDetail,
+  ProductLabel,
 } from "../types/menu.types";
 
-const MENU_PRODUCTS: Product[] = [
-  {
-    id: "1",
-    name: "Classic Burger Meal",
-    description: "Beef patty, lettuce, tomato, cheese with fries",
-    priceCents: 1299,
-    kcal: 920,
-    portionGrams: 430,
-    category: "meals",
-    image:
-      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=400&h=400&fit=crop",
-    label: "Popular",
-  },
-  {
-    id: "2",
-    name: "Grilled Chicken Sandwich",
-    description: "Grilled chicken breast with fresh vegetables",
-    priceCents: 999,
-    kcal: 540,
-    portionGrams: 280,
-    category: "sandwiches",
-    image:
-      "https://images.unsplash.com/photo-1619740455993-8c891b3c69ca?w=400&h=400&fit=crop",
-    label: null,
-  },
-  {
-    id: "3",
-    name: "Cappuccino",
-    description: "Rich espresso with steamed milk foam",
-    priceCents: 499,
-    kcal: 120,
-    portionGrams: 220,
-    category: "coffee",
-    image:
-      "https://images.unsplash.com/photo-1572442388796-11668a67e53d?w=400&h=400&fit=crop",
-    label: "Popular",
-  },
-  {
-    id: "4",
-    name: "Chocolate Croissant",
-    description: "Buttery pastry with dark chocolate filling",
-    priceCents: 399,
-    kcal: 340,
-    portionGrams: 95,
-    category: "bakery",
-    image:
-      "https://images.unsplash.com/photo-1555507036-ab1f4038808a?w=400&h=400&fit=crop",
-    label: "New",
-  },
-  {
-    id: "5",
-    name: "Fresh Orange Juice",
-    description: "100% freshly squeezed orange juice",
-    priceCents: 599,
-    kcal: 160,
-    portionGrams: 300,
-    category: "drinks",
-    image:
-      "https://images.unsplash.com/photo-1600271886742-f049cd451bba?w=400&h=400&fit=crop",
-    label: null,
-  },
-  {
-    id: "6",
-    name: "Tiramisu",
-    description: "Classic Italian coffee-flavored dessert",
-    priceCents: 699,
-    kcal: 410,
-    portionGrams: 160,
-    category: "desserts",
-    image:
-      "https://images.unsplash.com/photo-1571877227200-a0d98ea607e9?w=400&h=400&fit=crop",
-    label: "Popular",
-  },
-  {
-    id: "7",
-    name: "French Fries",
-    description: "Crispy golden fries with sea salt",
-    priceCents: 399,
-    kcal: 390,
-    portionGrams: 150,
-    category: "sides",
-    image:
-      "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400&h=400&fit=crop",
-    label: null,
-  },
-  {
-    id: "8",
-    name: "Caesar Salad",
-    description: "Romaine lettuce, parmesan, croutons, caesar dressing",
-    priceCents: 899,
-    kcal: 460,
-    portionGrams: 310,
-    category: "meals",
-    image:
-      "https://images.unsplash.com/photo-1546793665-c74683f339c1?w=400&h=400&fit=crop",
-    label: "Vegetarian",
-  },
-  {
-    id: "9",
-    name: "Latte",
-    description: "Espresso with steamed milk",
-    priceCents: 449,
-    kcal: 150,
-    portionGrams: 240,
-    category: "coffee",
-    image:
-      "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&h=400&fit=crop",
-    label: null,
-  },
-  {
-    id: "10",
-    name: "Blueberry Muffin",
-    description: "Moist muffin loaded with fresh blueberries",
-    priceCents: 349,
-    kcal: 360,
-    portionGrams: 115,
-    category: "bakery",
-    image:
-      "https://images.unsplash.com/photo-1607958996333-41aef7caefaa?w=400&h=400&fit=crop",
-    label: null,
-  },
-  {
-    id: "11",
-    name: "Iced Tea",
-    description: "Refreshing iced tea with lemon",
-    priceCents: 299,
-    kcal: 90,
-    portionGrams: 330,
-    category: "drinks",
-    image:
-      "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&h=400&fit=crop",
-    label: null,
-  },
-  {
-    id: "12",
-    name: "Ice Cream Sundae",
-    description: "Vanilla ice cream with chocolate sauce and nuts",
-    priceCents: 549,
-    kcal: 480,
-    portionGrams: 210,
-    category: "desserts",
-    image:
-      "https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400&h=400&fit=crop",
-    label: null,
-  },
-  {
-    id: "13",
-    name: "Green Power Bowl",
-    description: "Grains, roasted vegetables, avocado, herbs, and lemon dressing",
-    priceCents: 1099,
-    kcal: 620,
-    portionGrams: 360,
-    category: "meals",
-    image:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400&h=400&fit=crop",
-    label: "New",
-  },
-  {
-    id: "14",
-    name: "Strawberry Matcha Latte",
-    description: "Layered matcha, strawberry puree, and chilled oat milk",
-    priceCents: 579,
-    kcal: 210,
-    portionGrams: 320,
-    category: "coffee",
-    image:
-      "https://images.unsplash.com/photo-1515823064-d6e0c04616a7?w=400&h=400&fit=crop",
-    label: "New",
-  },
-  {
-    id: "15",
-    name: "Lemon Poppy Cake",
-    description: "Soft citrus cake slice with light glaze and poppy seeds",
-    priceCents: 499,
-    kcal: 390,
-    portionGrams: 120,
-    category: "bakery",
-    image:
-      "https://images.unsplash.com/photo-1519915028121-7d3463d20b13?w=400&h=400&fit=crop",
-    label: "New",
-  },
-];
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
+const FALLBACK_IMAGE =
+  "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=900&h=700&fit=crop";
 
-const MENU_CATEGORIES: MenuCategory[] = [
-  { id: "featured", label: "For You", icon: "sparkles" },
-  { id: "popular", label: "Popular", icon: "cart" },
-  {
-    id: "meals",
-    label: "Meals",
-    icon: "meal",
-    banner:
-      "https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=1400&h=400&fit=crop",
-    bannerTagline: "Hearty plates crafted fresh every day",
-  },
-  {
-    id: "sandwiches",
-    label: "Sandwiches",
-    icon: "sandwich",
-    banner:
-      "https://images.unsplash.com/photo-1481070414801-51fd732d7184?w=1400&h=400&fit=crop",
-    bannerTagline: "Stacked, toasted, and ready to go",
-  },
-  {
-    id: "bakery",
-    label: "Bakery",
-    icon: "bakery",
-    banner:
-      "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=1400&h=400&fit=crop",
-    bannerTagline: "Baked fresh every morning",
-  },
-  {
-    id: "coffee",
-    label: "Coffee",
-    icon: "coffee",
-    banner:
-      "https://images.unsplash.com/photo-1447933601403-0c6688de566e?w=1400&h=400&fit=crop",
-    bannerTagline: "Your perfect cup awaits",
-  },
-  { id: "drinks", label: "Drinks", icon: "drink" },
-  {
-    id: "desserts",
-    label: "Desserts",
-    icon: "dessert",
-    banner:
-      "https://images.unsplash.com/photo-1587314168485-3236d6710814?w=1400&h=400&fit=crop",
-    bannerTagline: "Sweet endings worth every bite",
-  },
-  { id: "sides", label: "Sides", icon: "side" },
-];
-
-const FEATURED_MENU_CONTENT: FeaturedMenuContent = {
-  heroBanner: {
-    id: "hero-fresh-picks",
-    title: "Fresh picks for today",
-    description: "Start with customer favorites, limited specials, and lighter options.",
-    image:
-      "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=1400&h=520&fit=crop",
-    tone: "primary",
-  },
-  secondaryBanners: [
-    {
-      id: "plant-based",
-      title: "Plant based choices",
-      description: "Colorful bowls, salads, and meat-free comfort food.",
-      image:
-        "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=700&h=360&fit=crop",
-      tone: "primary",
-    },
-    {
-      id: "sweet-break",
-      title: "Something sweet",
-      description: "Bakery treats, desserts, and coffee pairings.",
-      image:
-        "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&h=360&fit=crop",
-      tone: "secondary",
-    },
-  ],
-  quickFilters: ["Plant Based", "Gluten Free", "Popular", "New", "No sugar"],
-  newProducts: [MENU_PRODUCTS[12], MENU_PRODUCTS[13], MENU_PRODUCTS[14]],
-  recommendedProducts: [MENU_PRODUCTS[0], MENU_PRODUCTS[2], MENU_PRODUCTS[5]],
-};
-
-export function getMenuCategories(): MenuCategory[] {
-  return MENU_CATEGORIES;
+interface ActiveMenuResponse {
+  id: string;
+  currencyCode: string;
 }
 
-export function getMenuProducts(): Product[] {
-  return MENU_PRODUCTS;
+interface CategoryResponse {
+  menuCategoryId: string;
+  categoryId: string;
+  code: string;
+  name: string;
+  description: string | null;
+  sortOrder: number;
 }
 
-export function getFeaturedMenuContent(): FeaturedMenuContent {
-  return FEATURED_MENU_CONTENT;
+interface CategoryListResponse {
+  categories: CategoryResponse[];
+}
+
+interface ProductSummaryResponse {
+  menuProductId: string;
+  productId: string;
+  type: Product["type"];
+  name: string;
+  description: string | null;
+  label: ProductLabel | null;
+  price: string;
+  imageUrl: string | null;
+  hasCustomizations: boolean;
+}
+
+interface CategoryProductsResponse {
+  products: ProductSummaryResponse[];
+}
+
+interface MealSizeVariantResponse {
+  menuProductId: string;
+  productId: string;
+  type: "MEAL" | "LARGE_MEAL";
+  name: string;
+  price: string;
+  imageUrl: string | null;
+}
+
+interface CatalogBootstrap {
+  categories: MenuCategory[];
+  products: Product[];
+  featuredContent: FeaturedMenuContent;
+}
+
+export class ApiError extends Error {
+  readonly status: number;
+  readonly details?: unknown;
+
+  constructor(
+    message: string,
+    status: number,
+    details?: unknown,
+  ) {
+    super(message);
+    this.status = status;
+    this.details = details;
+  }
+}
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...init?.headers,
+    },
+  });
+  const body = (await response.json().catch(() => null)) as unknown;
+
+  if (!response.ok) {
+    const message =
+      body &&
+      typeof body === "object" &&
+      "message" in body &&
+      typeof body.message === "string"
+        ? body.message
+        : "The server could not complete the request.";
+    throw new ApiError(message, response.status, body);
+  }
+
+  return body as T;
+}
+
+function toCents(value: string): number {
+  return Math.round(Number(value) * 100);
+}
+
+function resolveImage(imageUrl: string | null): string {
+  if (!imageUrl) {
+    return FALLBACK_IMAGE;
+  }
+  if (/^https?:\/\//.test(imageUrl)) {
+    return imageUrl;
+  }
+  return FALLBACK_IMAGE;
+}
+
+function categoryIcon(code: string): CategoryIcon {
+  const normalized = code.toLowerCase();
+  if (normalized.includes("burger") || normalized.includes("sandwich")) {
+    return "sandwich";
+  }
+  if (normalized.includes("drink")) return "drink";
+  if (normalized.includes("coffee")) return "coffee";
+  if (normalized.includes("dessert")) return "dessert";
+  if (normalized.includes("bakery")) return "bakery";
+  if (normalized.includes("side")) return "side";
+  return "meal";
+}
+
+function mapProduct(
+  product: ProductSummaryResponse,
+  categoryId: string,
+): Product {
+  return {
+    id: product.menuProductId,
+    menuProductId: product.menuProductId,
+    productId: product.productId,
+    type: product.type,
+    name: product.name,
+    description: product.description ?? "",
+    priceCents: toCents(product.price),
+    category: categoryId,
+    image: resolveImage(product.imageUrl),
+    label: product.label,
+    hasCustomizations: product.hasCustomizations,
+  };
+}
+
+function mapMealSizeVariant(
+  variant: MealSizeVariantResponse | null,
+): ProductDetail["regularMeal"] {
+  if (!variant) {
+    return null;
+  }
+
+  return {
+    menuProductId: variant.menuProductId,
+    productId: variant.productId,
+    type: variant.type,
+    name: variant.name,
+    price: variant.price,
+    image: resolveImage(variant.imageUrl),
+  };
+}
+
+export async function getCatalog(locale = "en"): Promise<CatalogBootstrap> {
+  const activeMenu = await request<ActiveMenuResponse>(
+    `/api/v1/kiosk/menus/active?locale=${encodeURIComponent(locale)}`,
+  );
+  const categoryList = await request<CategoryListResponse>(
+    `/api/v1/kiosk/menus/${activeMenu.id}/categories?locale=${encodeURIComponent(locale)}`,
+  );
+  const categoryProducts = await Promise.all(
+    categoryList.categories.map(async (category) => ({
+      category,
+      response: await request<CategoryProductsResponse>(
+        `/api/v1/kiosk/menu-categories/${category.menuCategoryId}/products?locale=${encodeURIComponent(locale)}`,
+      ),
+    })),
+  );
+
+  const databaseCategories: MenuCategory[] = categoryProducts.map(
+    ({ category }) => ({
+      id: category.menuCategoryId,
+      code: category.code,
+      label: category.name,
+      icon: categoryIcon(category.code),
+      bannerTagline: category.description ?? undefined,
+    }),
+  );
+  const products = categoryProducts.flatMap(({ category, response }) =>
+    response.products.map((product) =>
+      mapProduct(product, category.menuCategoryId),
+    ),
+  );
+  const featuredProducts = products.filter(
+    (product) => product.label === "New" || product.label === "Popular",
+  );
+  const featuredSource =
+    featuredProducts.length > 0 ? featuredProducts : products;
+  const categories: MenuCategory[] = [
+    {
+      id: "featured",
+      code: "featured",
+      label: "For You",
+      icon: "sparkles",
+    },
+    ...databaseCategories,
+  ];
+
+  return {
+    categories,
+    products,
+    featuredContent: {
+      heroBanner: {
+        id: "hero-fresh-picks",
+        title: "Fresh picks for today",
+        description:
+          "Start with customer favorites, current meals, and lighter options.",
+        image:
+          "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=1400&h=520&fit=crop",
+        tone: "primary",
+      },
+      secondaryBanners: [
+        {
+          id: "plant-based",
+          title: "Build your meal",
+          description: "Choose each included item and customize supported options.",
+          image:
+            "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=700&h=360&fit=crop",
+          tone: "primary",
+        },
+        {
+          id: "meal-upgrades",
+          title: "Make it large",
+          description: "Linked large meals use their own sides, drinks, and pricing.",
+          image:
+            "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&h=360&fit=crop",
+          tone: "secondary",
+        },
+      ],
+      quickFilters: ["Plant Based", "Gluten Free", "Popular", "New", "No sugar"],
+      newProducts: featuredSource.slice(0, 3),
+      recommendedProducts: featuredSource.slice(3, 6).length
+        ? featuredSource.slice(3, 6)
+        : products.slice(0, 3),
+    },
+  };
+}
+
+export async function getProductDetail(
+  product: Product,
+  locale = "en",
+): Promise<ProductDetail> {
+  const detail = await request<
+    Omit<ProductDetail, keyof Product | "regularMeal" | "largeMeal"> &
+      ProductSummaryResponse & {
+        regularMeal: MealSizeVariantResponse | null;
+        largeMeal: MealSizeVariantResponse | null;
+      }
+  >(
+    `/api/v1/kiosk/menu-products/${product.menuProductId}?locale=${encodeURIComponent(locale)}`,
+  );
+
+  return {
+    ...product,
+    menuProductId: detail.menuProductId,
+    productId: detail.productId,
+    type: detail.type,
+    name: detail.name,
+    description: detail.description ?? "",
+    priceCents: toCents(detail.price),
+    image: resolveImage(detail.imageUrl),
+    label: detail.label,
+    hasCustomizations: detail.hasCustomizations,
+    groups: detail.groups,
+    ingredients: detail.ingredients,
+    modifierGroups: detail.modifierGroups,
+    regularMeal: mapMealSizeVariant(detail.regularMeal),
+    largeMeal: mapMealSizeVariant(detail.largeMeal),
+  };
 }
 
 export function filterMenuProducts(
   products: readonly Product[],
-  activeCategory: CategoryId,
+  activeCategory: string,
   searchTerm: string,
 ): Product[] {
   const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -289,21 +290,17 @@ export function filterMenuProducts(
   return products.filter((product) => {
     const matchesCategory =
       activeCategory === "featured"
-        ? product.label === "New" || product.label === "Popular"
-        : activeCategory === "popular"
-        ? product.label === "Popular"
+        ? product.label === "New" ||
+          product.label === "Popular" ||
+          product.type === "MEAL"
         : product.category === activeCategory;
 
-    if (!matchesCategory) {
-      return false;
-    }
-
-    if (!normalizedSearch) {
-      return true;
-    }
-
-    return [product.name, product.description, product.label ?? ""].some(
-      (value) => value.toLowerCase().includes(normalizedSearch),
+    return (
+      matchesCategory &&
+      (!normalizedSearch ||
+        [product.name, product.description, product.label ?? ""].some((value) =>
+          value.toLowerCase().includes(normalizedSearch),
+        ))
     );
   });
 }

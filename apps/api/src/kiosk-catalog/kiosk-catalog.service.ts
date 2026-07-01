@@ -40,6 +40,7 @@ interface MealVariantRecord extends NamedRecord {
   id: string;
   type: string;
   basePrice: DecimalLike;
+  imageUrl: string | null;
   translations: readonly TranslationFields[];
   menuProducts: Array<{
     id: string;
@@ -247,6 +248,12 @@ export class KioskCatalogService {
             product: {
               include: {
                 translations: true,
+                _count: {
+                  select: {
+                    productGroups: true,
+                    modifierGroups: true,
+                  },
+                },
               },
             },
           },
@@ -617,6 +624,7 @@ export class KioskCatalogService {
         defaultLocale,
       ).name,
       price: this.formatDecimal(menuProduct.menuPrice ?? product.basePrice),
+      imageUrl: product.imageUrl,
     };
   }
 
@@ -703,6 +711,12 @@ export class KioskCatalogService {
         basePrice: DecimalLike;
         imageUrl: string | null;
         translations: readonly TranslationFields[];
+        _count?: {
+          productGroups: number;
+          modifierGroups: number;
+        };
+        productGroups?: unknown[];
+        modifierGroups?: unknown[];
       };
     },
     currencyCode: string,
@@ -730,7 +744,29 @@ export class KioskCatalogService {
       currencyCode,
       imageUrl: menuProduct.product.imageUrl,
       sortOrder: menuProduct.sortOrder,
+      hasCustomizations: this.hasCustomizations(menuProduct.product),
     };
+  }
+
+  private hasCustomizations(product: {
+    type: string;
+    _count?: {
+      productGroups: number;
+      modifierGroups: number;
+    };
+    productGroups?: unknown[];
+    modifierGroups?: unknown[];
+  }): boolean {
+    if (product.type !== 'ITEM') {
+      return true;
+    }
+
+    const productGroupCount =
+      product._count?.productGroups ?? product.productGroups?.length ?? 0;
+    const modifierGroupCount =
+      product._count?.modifierGroups ?? product.modifierGroups?.length ?? 0;
+
+    return productGroupCount > 0 || modifierGroupCount > 0;
   }
 
   private resolveLocale(

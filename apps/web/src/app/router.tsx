@@ -1,13 +1,14 @@
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import { WelcomePage } from "../pages/WelcomePage/WelcomePage";
 import { MenuPage } from "../pages/MenuPage/MenuPage";
 import { ProductDetailsPage } from "../pages/ProductDetailsPage/ProductDetailsPage";
 import type { Product } from "../features/menu/types/menu.types";
 import type { CartItem } from "../features/cart/types/cart.types";
 import {
-  addProductToCart,
-  getCartSummary,
-} from "../features/cart/store/cart.store";
+  addBasketItem,
+  createBasket,
+  type AddBasketItemRequest,
+} from "../features/cart/api/basketApi";
 import { useMenu } from "../features/menu/hooks/useMenu";
 import type { CategoryId } from "../features/menu/types/menu.types";
 
@@ -25,20 +26,58 @@ export function AppRouter() {
     useState<CategoryId>("featured");
   const [searchTerm, setSearchTerm] = useState("");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [cartSummary, setCartSummary] = useState({
+    itemCount: 0,
+    totalCents: 0,
+  });
+  const [basketError, setBasketError] = useState<string | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const basketIdRef = useRef<string | null>(null);
 
   const menu = useMenu({ activeCategory, searchTerm });
-  const cartSummary = useMemo(() => getCartSummary(cartItems), [cartItems]);
 
   const handleOrderModeSelect = (mode: OrderMode) => {
     setOrderMode(mode);
     setRoute("menu");
   };
 
-  const handleAddToCart = (product: Product, quantity = 1) => {
-    setCartItems((currentItems) =>
-      addProductToCart(currentItems, product, quantity),
-    );
+  const ensureBasket = async () => {
+    if (basketIdRef.current) {
+      return basketIdRef.current;
+    }
+    const basket = await createBasket();
+    basketIdRef.current = basket.id;
+    setCartItems(basket.items);
+    setCartSummary(basket.summary);
+    return basket.id;
+  };
+
+  const handleAddRequest = async (request: AddBasketItemRequest) => {
+    try {
+      const basketId = await ensureBasket();
+      const basket = await addBasketItem(basketId, request);
+      setCartItems(basket.items);
+      setCartSummary(basket.summary);
+      setBasketError(null);
+    } catch (reason) {
+      const message =
+        reason instanceof Error
+          ? reason.message
+          : "The item could not be added.";
+      setBasketError(message);
+      throw reason;
+    }
+  };
+
+  const handleQuickAdd = (product: Product) => {
+    if (product.hasCustomizations) {
+      handleProductDetailsOpen(product);
+      return;
+    }
+    void handleAddRequest({
+      menuProductId: product.menuProductId,
+      quantity: 1,
+    });
   };
 
   const handleOrderModeToggle = () => {
@@ -66,7 +105,7 @@ export function AppRouter() {
         orderMode={orderMode}
         product={selectedProduct}
         searchTerm={searchTerm}
-        onAddToCart={handleAddToCart}
+        onAddToCart={handleAddRequest}
         onBack={handleProductDetailsClose}
         onOrderModeToggle={handleOrderModeToggle}
         onSearchChange={setSearchTerm}
@@ -82,10 +121,13 @@ export function AppRouter() {
       cartSummary={cartSummary}
       categories={menu.categories}
       featuredContent={menu.featuredContent}
+      actionError={basketError}
+      error={menu.error}
+      isLoading={menu.isLoading}
       orderMode={orderMode}
       products={menu.products}
       searchTerm={searchTerm}
-      onAddToCart={handleAddToCart}
+      onAddToCart={handleQuickAdd}
       onCategoryChange={setActiveCategory}
       onOrderModeToggle={handleOrderModeToggle}
       onProductDetailsOpen={handleProductDetailsOpen}

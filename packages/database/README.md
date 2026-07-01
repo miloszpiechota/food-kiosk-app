@@ -13,13 +13,17 @@ packages/database/
     client.ts
 ```
 
-Local PostgreSQL is provided from the repo root through `docker-compose.yml`.
+Local development uses PostgreSQL installed on your machine. Use pgAdmin to
+create and inspect the local `food_kiosk_dev` database.
 
 Default connection string:
 
 ```txt
 postgresql://postgres:postgres@localhost:5432/food_kiosk_dev
 ```
+
+If your local PostgreSQL user, password, host, or port differs, update
+`DATABASE_URL` in `packages/database/.env` and the root `.env`.
 
 Useful commands from the repo root:
 

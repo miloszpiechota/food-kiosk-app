@@ -15,10 +15,13 @@ import { KioskShell } from "../../shared/layout/KioskShell";
 interface MenuPageProps {
   activeCategory: CategoryId;
   activeCategoryDetails: MenuCategory;
+  actionError: string | null;
   cartItems: CartItem[];
   cartSummary: CartSummary;
   categories: MenuCategory[];
-  featuredContent: FeaturedMenuContent;
+  error: string | null;
+  featuredContent: FeaturedMenuContent | null;
+  isLoading: boolean;
   orderMode: OrderMode;
   products: Product[];
   searchTerm: string;
@@ -32,10 +35,13 @@ interface MenuPageProps {
 export function MenuPage({
   activeCategory,
   activeCategoryDetails,
+  actionError,
   cartItems,
   cartSummary,
   categories,
+  error,
   featuredContent,
+  isLoading,
   orderMode,
   products,
   searchTerm,
@@ -60,17 +66,45 @@ export function MenuPage({
           categories={categories}
           onCategoryChange={onCategoryChange}
         />
-        <ProductGrid
-          activeCategory={activeCategoryDetails}
-          featuredContent={featuredContent}
-          products={products}
-          searchTerm={searchTerm}
-          onAddToCart={onAddToCart}
-          onViewProductDetails={onProductDetailsOpen}
-        />
+        <div className="relative flex min-h-0 flex-1">
+          {actionError && (
+            <p
+              role="alert"
+              className="absolute inset-x-4 top-4 z-30 rounded-2xl border border-destructive/60 bg-card p-4 font-semibold text-destructive shadow-xl"
+            >
+              {actionError}
+            </p>
+          )}
+          {isLoading ? (
+            <MenuStatus message="Loading menu…" />
+          ) : error ? (
+            <MenuStatus message={error} />
+          ) : featuredContent ? (
+            <ProductGrid
+              activeCategory={activeCategoryDetails}
+              featuredContent={featuredContent}
+              products={products}
+              searchTerm={searchTerm}
+              onAddToCart={onAddToCart}
+              onViewProductDetails={onProductDetailsOpen}
+            />
+          ) : (
+            <MenuStatus message="No active menu is available." />
+          )}
+        </div>
       </div>
 
       <OrderFooter items={cartItems} summary={cartSummary} />
     </KioskShell>
+  );
+}
+
+function MenuStatus({ message }: { message: string }) {
+  return (
+    <main className="grid min-h-0 flex-1 place-items-center p-8">
+      <p className="rounded-3xl border border-border bg-card p-8 text-xl text-foreground">
+        {message}
+      </p>
+    </main>
   );
 }

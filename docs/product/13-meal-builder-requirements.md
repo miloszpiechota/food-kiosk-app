@@ -371,12 +371,16 @@ The meal builder must:
 - backend-authoritative meal surcharge pricing
 - basket creation and configured basket-item write endpoints
 - configuration-aware basket-item merging
+- frontend catalog loading from backend menu endpoints
+- frontend Product Details loading from the backend detail endpoint
+- regular/large meal switching in Product Details
+- required group selection controls with first-option initialization
+- item-level modifier controls for selected meal options
+- frontend basket creation and configured item submission
+- backend basket totals reflected in the kiosk footer
 
 ### Planned
 
-- frontend consumption of the database-backed catalog
-- meal-builder controls on Product Details
-- configuration state and validation
 - configuration-aware basket display and editing
 - checkout and order snapshot creation
 
@@ -394,10 +398,13 @@ The meal builder must:
 10. The meal base price includes the first option from every group.
 11. Alternative options use meal-specific surcharges independent of standalone prices.
 12. Identical normalized configurations merge into one basket line by increasing quantity.
+13. The customer switches between regular and large meals through meal-size cards in Product Details.
+14. A regular meal has at most one linked large meal in the current data model.
+15. Products used only as meal options may remain absent from visible menu categories.
+16. Selected side and drink items may expose customization whenever those products define modifier groups.
 
 ## Remaining Decisions
 
-1. How should the customer switch from a regular meal to its linked large meal: a size selector, an upgrade button, or a group-like control?
-2. Does every regular meal have at most one linked large meal?
-3. Can products used only as meal options remain absent from every visible menu category?
-4. Should customization of selected side and drink items be allowed whenever those products define modifiers, or only customization of food/main items?
+No open product decisions remain for the current meal-builder MVP.
+
+Next decisions belong to the basket review, checkout, payment, and order-management flows.

@@ -2,9 +2,9 @@
 
 ## Status
 
-Implemented backend foundation with planned frontend integration.
+Implemented backend foundation and initial frontend integration.
 
-The database relationship, read-side catalog contract, basket writes, authoritative configuration validation, pricing, and snapshots are implemented. Frontend meal-builder integration remains planned.
+The database relationship, read-side catalog contract, basket writes, authoritative configuration validation, pricing, snapshots, catalog loading, Product Details meal controls, and basket submission are implemented.
 
 ## Goal
 
@@ -425,6 +425,8 @@ Other useful error codes:
 - configuration fingerprint stability
 - snapshot construction
 
+Current backend unit coverage includes meal surcharge pricing, nested item modifiers, missing groups, invalid option membership, duplicate groups, duplicate modifiers, modifier quantity limits, standalone item modifiers, standalone item group rejection, negative final price rejection, configuration fingerprint stability, basket creation, configuration-aware basket-line merging, new basket-line creation, invalid quantity rejection, and missing active basket rejection.
+
 ### Integration Tests
 
 - valid meal added to basket
@@ -449,8 +451,7 @@ Other useful error codes:
 
 ## Remaining Implementation Sequence
 
-1. Connect the frontend catalog to database-backed APIs.
-2. Build Product Details group controls.
-3. Add regular/large size selection.
-4. Add configuration-aware basket summary and editing.
-5. Persist immutable order snapshots at checkout.
+1. Add a full configuration-aware basket review page.
+2. Support editing existing configured basket items.
+3. Persist immutable order snapshots at checkout.
+4. Add checkout and payment integration.

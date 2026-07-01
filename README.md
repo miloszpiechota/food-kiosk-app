@@ -1,6 +1,6 @@
 # Food Ordering Kiosk App
 
-Production-style full-stack food ordering kiosk app built with React, TypeScript, NestJS, PostgreSQL, Stripe test payments, Docker, CI/CD, accessibility, security, and automated testing.
+Production-style full-stack food ordering kiosk app built with React, TypeScript, NestJS, PostgreSQL, Stripe test payments, CI/CD, accessibility, security, and automated testing.
 
 ## Status
 
@@ -19,6 +19,7 @@ Discovery and initial project setup.
 - Security-focused admin area
 - Automated tests
 - Dev, staging, and production environments
+- Docker containerization
 
 ## Project Structure
 

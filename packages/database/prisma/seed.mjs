@@ -1,15 +1,31 @@
-import {
+import prismaClientPackage from "@prisma/client";
+
+const {
   ModifierActionType,
   Prisma,
   PrismaClient,
   ProductLabel,
   ProductType,
   SelectionMode,
-} from "@prisma/client";
+} = prismaClientPackage;
 
 const prisma = new PrismaClient();
 
 const decimal = (value) => new Prisma.Decimal(value);
+
+const productImageUrls = {
+  classicBurger: "https://images.pexels.com/photos/19247565/pexels-photo-19247565.jpeg",
+  cheeseBurger: "https://images.pexels.com/photos/19247565/pexels-photo-19247565.jpeg",
+  fries: "https://images.pexels.com/photos/5378423/pexels-photo-5378423.jpeg",
+  sideSalad: "https://images.pexels.com/photos/1555814/pexels-photo-1555814.jpeg",
+  cola: "https://images.pexels.com/photos/8879626/pexels-photo-8879626.jpeg",
+  orangeJuice: "https://images.pexels.com/photos/11009217/pexels-photo-11009217.jpeg",
+  largeFries: "https://images.pexels.com/photos/32421783/pexels-photo-32421783.jpeg",
+  largeCola: "https://images.pexels.com/photos/15205136/pexels-photo-15205136.jpeg",
+  largeOrangeJuice: "https://images.pexels.com/photos/14454426/pexels-photo-14454426.jpeg",
+  burgerMeal: "https://images.pexels.com/photos/19247558/pexels-photo-19247558.jpeg",
+  largeBurgerMeal: "https://images.pexels.com/photos/14773005/pexels-photo-14773005.jpeg",
+};
 
 async function resetDatabase() {
   await prisma.$executeRawUnsafe(`
@@ -331,7 +347,7 @@ async function main() {
         description: "Single beef burger with salad and sauce.",
         label: ProductLabel.POPULAR,
         basePrice: decimal("18.90"),
-        imageUrl: "/seed/classic-burger.jpg",
+        imageUrl: productImageUrls.classicBurger,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: true,
@@ -360,7 +376,7 @@ async function main() {
         name: "Cheese Burger",
         description: "Beef burger with cheddar cheese and pickles.",
         basePrice: decimal("20.90"),
-        imageUrl: "/seed/cheese-burger.jpg",
+        imageUrl: productImageUrls.cheeseBurger,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: true,
@@ -389,7 +405,7 @@ async function main() {
         name: "Regular Fries",
         description: "Lightly salted fries.",
         basePrice: decimal("8.90"),
-        imageUrl: "/seed/fries.jpg",
+        imageUrl: productImageUrls.fries,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: true,
@@ -411,7 +427,7 @@ async function main() {
         description: "Small fresh salad.",
         label: ProductLabel.VEGETARIAN,
         basePrice: decimal("9.90"),
-        imageUrl: "/seed/side-salad.jpg",
+        imageUrl: productImageUrls.sideSalad,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: true,
@@ -432,7 +448,7 @@ async function main() {
         name: "Cola",
         description: "Chilled cola drink.",
         basePrice: decimal("6.90"),
-        imageUrl: "/seed/cola.jpg",
+        imageUrl: productImageUrls.cola,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: true,
@@ -453,7 +469,7 @@ async function main() {
         name: "Orange Juice",
         description: "Fresh orange juice.",
         basePrice: decimal("7.90"),
-        imageUrl: "/seed/orange-juice.jpg",
+        imageUrl: productImageUrls.orangeJuice,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: true,
@@ -474,7 +490,7 @@ async function main() {
         name: "Large Fries",
         description: "Large portion of lightly salted fries.",
         basePrice: decimal("11.90"),
-        imageUrl: "/seed/fries-large.jpg",
+        imageUrl: productImageUrls.largeFries,
         isAvailable: true,
         isStandaloneOrderable: false,
         canBeMealOption: true,
@@ -503,7 +519,7 @@ async function main() {
         name: "Large Cola",
         description: "Large chilled cola drink.",
         basePrice: decimal("8.90"),
-        imageUrl: "/seed/cola-large.jpg",
+        imageUrl: productImageUrls.largeCola,
         isAvailable: true,
         isStandaloneOrderable: false,
         canBeMealOption: true,
@@ -532,7 +548,7 @@ async function main() {
         name: "Large Orange Juice",
         description: "Large fresh orange juice.",
         basePrice: decimal("9.90"),
-        imageUrl: "/seed/orange-juice-large.jpg",
+        imageUrl: productImageUrls.largeOrangeJuice,
         isAvailable: true,
         isStandaloneOrderable: false,
         canBeMealOption: true,
@@ -562,7 +578,7 @@ async function main() {
         description: "Choose one burger, one side, and one drink.",
         label: ProductLabel.POPULAR,
         basePrice: decimal("27.90"),
-        imageUrl: "/seed/burger-meal.jpg",
+        imageUrl: productImageUrls.burgerMeal,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: false,
@@ -592,7 +608,7 @@ async function main() {
         description: "Large meal bundle with premium option pricing.",
         label: ProductLabel.NEW,
         basePrice: decimal("31.90"),
-        imageUrl: "/seed/large-burger-meal.jpg",
+        imageUrl: productImageUrls.largeBurgerMeal,
         isAvailable: true,
         isStandaloneOrderable: true,
         canBeMealOption: false,

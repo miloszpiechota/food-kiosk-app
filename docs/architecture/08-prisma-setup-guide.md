@@ -197,13 +197,24 @@ DATABASE_URL=postgresql://postgres:postgres@localhost:5432/food_kiosk_dev
 
 This file is used by Prisma CLI commands.
 
-### 2. Start PostgreSQL
+### 2. Create The Local PostgreSQL Database
 
-```powershell
-pnpm db:up
+Install and run PostgreSQL locally, then use pgAdmin to create a database named:
+
+```txt
+food_kiosk_dev
 ```
 
-This starts the PostgreSQL container from `docker-compose.yml`.
+The default project connection string assumes:
+
+- host: `localhost`
+- port: `5432`
+- user: `postgres`
+- password: `postgres`
+- database: `food_kiosk_dev`
+
+If your local PostgreSQL settings are different, update `DATABASE_URL` in
+`packages/database/.env` and the root `.env`.
 
 ### 3. Validate The Schema
 
@@ -256,7 +267,6 @@ Use it for development only.
 Use this sequence when setting up a fresh local database:
 
 ```powershell
-pnpm db:up
 pnpm db:validate
 pnpm db:generate
 pnpm db:migrate:dev -- --name init
@@ -315,6 +325,7 @@ Do not edit generated Prisma Client files manually.
 
 ## Project Notes
 
-- Prisma is used in test/development mode with local PostgreSQL.
+- Prisma is used in test/development mode with local PostgreSQL managed outside
+  Docker.
 - Payment-related data should stay consistent with the project rule that payment status is confirmed through verified webhooks, not only frontend redirects.
 - Changes to payment or security database behavior should include tests.

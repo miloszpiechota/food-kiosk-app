@@ -159,7 +159,7 @@ Example response shape for a menu product card:
   "description": "Single beef burger with salad and sauce.",
   "price": "18.90",
   "currencyCode": "PLN",
-  "imageUrl": "/seed/classic-burger.jpg",
+  "imageUrl": "https://images.pexels.com/photos/19247565/pexels-photo-19247565.jpeg",
   "isAvailable": true
 }
 ```

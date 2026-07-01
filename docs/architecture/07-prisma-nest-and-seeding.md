@@ -88,11 +88,11 @@ The seed is intentionally catalog-focused so the first backend/frontend slice ca
 
 Run these from the repository root.
 
-### Start PostgreSQL
+### Prepare PostgreSQL
 
-```powershell
-pnpm db:up
-```
+Install and run PostgreSQL locally, then use pgAdmin to create a database named
+`food_kiosk_dev`. The default connection string expects the local `postgres`
+user with password `postgres` on port `5432`.
 
 ### Validate Prisma Schema
 
@@ -138,7 +138,7 @@ The root `.env` still exists for application runtime concerns.
 
 Use this sequence during local development:
 
-1. `pnpm db:up`
+1. Create `food_kiosk_dev` in local PostgreSQL with pgAdmin.
 2. `pnpm db:migrate:dev -- --name init`
 3. `pnpm db:seed`
 4. `pnpm dev:api`

@@ -61,6 +61,80 @@ function createMenuProduct(): ConfigurableMenuProduct {
   };
 }
 
+function createStandaloneMenuProduct(input?: {
+  menuPrice?: string | null;
+  modifierPriceAdjustment?: string;
+}): ConfigurableMenuProduct {
+  const modifierPriceAdjustment = input?.modifierPriceAdjustment ?? '2.50';
+
+  return {
+    id: 'menu-product-item',
+    menuCategoryId: 'menu-category-burgers',
+    productId: 'item-product',
+    menuPrice:
+      input?.menuPrice === null ? null : decimal(input?.menuPrice ?? '12.00'),
+    sortOrder: 1,
+    isVisible: true,
+    createdAt: new Date('2026-06-22T00:00:00.000Z'),
+    updatedAt: new Date('2026-06-22T00:00:00.000Z'),
+    product: {
+      id: 'item-product',
+      restaurantId: 'restaurant-1',
+      type: 'ITEM',
+      sku: 'item-test',
+      name: 'Test Burger',
+      description: null,
+      label: null,
+      regularMealId: null,
+      basePrice: decimal('11.00'),
+      imageUrl: null,
+      isAvailable: true,
+      isStandaloneOrderable: true,
+      canBeMealOption: true,
+      sortOrder: 1,
+      createdAt: new Date('2026-06-22T00:00:00.000Z'),
+      updatedAt: new Date('2026-06-22T00:00:00.000Z'),
+      productGroups: [],
+      modifierGroups: [
+        {
+          id: 'modifier-item-add',
+          productId: 'item-product',
+          name: 'Add extras',
+          actionType: 'ADD',
+          selectionType: 'MULTIPLE',
+          minSelections: 0,
+          maxSelections: 3,
+          allowQuantity: true,
+          sortOrder: 1,
+          isRequired: false,
+          options: [
+            {
+              id: 'modifier-extra-cheese',
+              modifierGroupId: 'modifier-item-add',
+              ingredientId: 'ingredient-cheese',
+              productIngredientId: null,
+              priceAdjustment: decimal(modifierPriceAdjustment),
+              maxQuantity: 3,
+              sortOrder: 1,
+              isAvailable: true,
+              ingredient: {
+                id: 'ingredient-cheese',
+                code: 'cheese',
+                name: 'Cheese',
+                description: null,
+                isActive: true,
+                createdAt: new Date('2026-06-22T00:00:00.000Z'),
+                updatedAt: new Date('2026-06-22T00:00:00.000Z'),
+              },
+              productIngredient: null,
+            },
+          ],
+        },
+      ],
+    },
+  };
+}
+
 function createGroup(input: {
   id: string;
   code: string;
@@ -199,6 +273,28 @@ function createRequest(): AddBasketItemRequest {
   };
 }
 
+function expectFieldError(
+  action: () => void,
+  expectedCode: string,
+): UnprocessableEntityException {
+  let error: unknown;
+  try {
+    action();
+  } catch (caught) {
+    error = caught;
+  }
+
+  expect(error).toBeInstanceOf(UnprocessableEntityException);
+  const exception = error as UnprocessableEntityException;
+  const response = exception.getResponse() as {
+    fieldErrors?: Array<{ code: string }>;
+  };
+  expect(response.fieldErrors).toEqual(
+    expect.arrayContaining([expect.objectContaining({ code: expectedCode })]),
+  );
+  return exception;
+}
+
 describe('MealConfigurationService', () => {
   const service = new MealConfigurationService();
 
@@ -218,8 +314,131 @@ describe('MealConfigurationService', () => {
     const request = createRequest();
     request.groupSelections = request.groupSelections?.slice(0, 1);
 
-    expect(() => service.evaluate(createMenuProduct(), request)).toThrow(
-      UnprocessableEntityException,
+    expectFieldError(
+      () => service.evaluate(createMenuProduct(), request),
+      'ONE_SELECTION_REQUIRED',
+    );
+  });
+
+  it('rejects meal options that do not belong to the submitted group', () => {
+    const request = createRequest();
+    request.groupSelections?.[0]?.options.splice(0, 1, {
+      productGroupOptionId: 'option-from-another-group',
+      quantity: 1,
+    });
+
+    expectFieldError(
+      () => service.evaluate(createMenuProduct(), request),
+      'OPTION_NOT_IN_GROUP',
+    );
+  });
+
+  it('rejects duplicate meal-group submissions', () => {
+    const request = createRequest();
+    request.groupSelections?.push({ ...(request.groupSelections[0] ?? {}) });
+
+    expectFieldError(
+      () => service.evaluate(createMenuProduct(), request),
+      'DUPLICATE_GROUP',
+    );
+  });
+
+  it('rejects duplicate nested modifier submissions', () => {
+    const request = createRequest();
+    const modifierSelections =
+      request.groupSelections?.[0]?.options[0]?.modifierSelections ?? [];
+    modifierSelections.push({
+      modifierOptionId: 'modifier-bacon',
+      quantity: 1,
+    });
+
+    expectFieldError(
+      () => service.evaluate(createMenuProduct(), request),
+      'DUPLICATE_MODIFIER',
+    );
+  });
+
+  it('rejects nested modifier quantities above the allowed maximum', () => {
+    const request = createRequest();
+    const modifier =
+      request.groupSelections?.[0]?.options[0]?.modifierSelections?.[0];
+    if (modifier) {
+      modifier.quantity = 3;
+    }
+
+    expectFieldError(
+      () => service.evaluate(createMenuProduct(), request),
+      'MODIFIER_QUANTITY_EXCEEDED',
+    );
+  });
+
+  it('calculates standalone item modifiers from menu price', () => {
+    const result = service.evaluate(createStandaloneMenuProduct(), {
+      menuProductId: 'menu-product-item',
+      quantity: 1,
+      modifierSelections: [
+        {
+          modifierOptionId: 'modifier-extra-cheese',
+          quantity: 2,
+        },
+      ],
+    });
+
+    expect(result.unitPrice.toString()).toBe('17');
+    expect(result.snapshot).toMatchObject({
+      productType: 'ITEM',
+      basePrice: '12',
+      configuredUnitPrice: '17',
+      modifiers: [
+        expect.objectContaining({
+          modifierOptionId: 'modifier-extra-cheese',
+          quantity: 2,
+          priceAdjustment: '2.5',
+        }),
+      ],
+    });
+  });
+
+  it('rejects meal-group selections for standalone items', () => {
+    expectFieldError(
+      () =>
+        service.evaluate(createStandaloneMenuProduct(), {
+          menuProductId: 'menu-product-item',
+          quantity: 1,
+          groupSelections: createRequest().groupSelections,
+        }),
+      'GROUPS_NOT_ALLOWED',
+    );
+  });
+
+  it('rejects configurations that would create a negative final price', () => {
+    let error: unknown;
+    try {
+      service.evaluate(
+        createStandaloneMenuProduct({
+          menuPrice: '1.00',
+          modifierPriceAdjustment: '-2.00',
+        }),
+        {
+          menuProductId: 'menu-product-item',
+          quantity: 1,
+          modifierSelections: [
+            {
+              modifierOptionId: 'modifier-extra-cheese',
+              quantity: 1,
+            },
+          ],
+        },
+      );
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(UnprocessableEntityException);
+    expect((error as UnprocessableEntityException).getResponse()).toMatchObject(
+      {
+        code: 'INVALID_CONFIGURED_PRICE',
+      },
     );
   });
 

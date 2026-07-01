@@ -1,41 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { getMenuProducts } from "../../menu/api/menuApi";
-import { addProductToCart, getCartSummary } from "./cart.store";
-
-const products = getMenuProducts();
+import type { CartItem } from "../types/cart.types";
+import { getCartSummary } from "./cart.store";
 
 describe("cart store", () => {
-  it("adds a product as a new cart item", () => {
-    const cart = addProductToCart([], products[0]);
+  it("summarizes backend basket items", () => {
+    const items: CartItem[] = [
+      {
+        id: "item-1",
+        menuProductId: "menu-product-1",
+        productId: "product-1",
+        name: "Burger Meal",
+        quantity: 2,
+        unitPriceCents: 2400,
+        lineTotalCents: 4800,
+        configuration: {},
+      },
+      {
+        id: "item-2",
+        menuProductId: "menu-product-2",
+        productId: "product-2",
+        name: "Cola",
+        quantity: 1,
+        unitPriceCents: 500,
+        lineTotalCents: 500,
+        configuration: {},
+      },
+    ];
 
-    expect(cart).toHaveLength(1);
-    expect(cart[0]).toMatchObject({
-      id: products[0].id,
-      quantity: 1,
-    });
-  });
-
-  it("increments quantity when the same product is added again", () => {
-    const firstCart = addProductToCart([], products[0]);
-    const secondCart = addProductToCart(firstCart, products[0]);
-
-    expect(secondCart).toHaveLength(1);
-    expect(secondCart[0].quantity).toBe(2);
-  });
-
-  it("adds a selected quantity of a product", () => {
-    const cart = addProductToCart([], products[0], 3);
-
-    expect(cart).toHaveLength(1);
-    expect(cart[0].quantity).toBe(3);
-  });
-
-  it("summarizes cart item count and total in cents", () => {
-    const cart = addProductToCart(addProductToCart([], products[0]), products[2]);
-
-    expect(getCartSummary(cart)).toEqual({
-      itemCount: 2,
-      totalCents: products[0].priceCents + products[2].priceCents,
+    expect(getCartSummary(items)).toEqual({
+      itemCount: 3,
+      totalCents: 5300,
     });
   });
 });

@@ -102,6 +102,7 @@ describe('KioskCatalogController', () => {
       currencyCode: 'PLN',
       imageUrl: null,
       sortOrder: 1,
+      hasCustomizations: true,
       locale: 'en',
       isAvailable: true,
       groups: [],

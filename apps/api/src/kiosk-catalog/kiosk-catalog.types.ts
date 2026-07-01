@@ -35,6 +35,7 @@ export interface MenuProductSummary {
   currencyCode: string;
   imageUrl: string | null;
   sortOrder: number;
+  hasCustomizations: boolean;
 }
 
 export type ProductLabelResponse = 'Popular' | 'New' | 'Vegetarian';
@@ -128,4 +129,5 @@ export interface MealSizeVariantResponse {
   type: string;
   name: string;
   price: string;
+  imageUrl: string | null;
 }
