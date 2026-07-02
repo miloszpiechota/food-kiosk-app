@@ -19,18 +19,19 @@ Implemented in the current frontend design:
 - Required meal option selection controls
 - Add-extra and remove-ingredient modifier controls
 - Backend basket creation and configured item submission
+- Basket Review page with configuration summaries
+- Backend basket item quantity updates and removal from Basket Review
+- Backend order snapshot creation before payment
 - Cart summary footer
 - Accessibility and language utility buttons
 - Loading and error states for menu, product details, and basket writes
 
 Not implemented yet:
 
-- Full cart drawer or order review screen
+- Backend-backed basket item editing
 - Checkout flow
 - Payment flow
-- Editing existing configured basket items
 - Detailed configuration display in the cart footer
-- Order snapshot creation
 - Advanced accessibility settings panel
 - Real language switching
 
@@ -195,8 +196,37 @@ Current order summary behavior:
 
 Important limitation:
 
-- The checkout button is only a visual placeholder for now. Full order review, checkout, and payment are not implemented yet.
+- The checkout button opens Basket Review when the cart has items.
+- Payment is not implemented yet.
 - The footer does not yet expose full configuration details or item editing.
+
+## Basket Review Page
+
+The Basket Review page is opened from the footer checkout button after at least one item has been added.
+
+Current elements:
+
+- `Back to menu` action
+- order mode selector for `Dine in` and `Take out`
+- list of backend basket items
+- line total and unit price per item
+- customer-readable meal choices from `configurationSnapshot`
+- green styling for add-extra modifiers
+- red styling for removed-ingredient modifiers
+- backend-backed quantity stepper
+- backend-backed remove action
+- price breakdown using the backend subtotal
+- empty basket state
+- checkout/order snapshot panel
+
+Current behavior:
+
+- The page renders the current frontend basket state returned by the backend.
+- It does not invent tax, discounts, or payment totals.
+- Quantity changes and item removal call backend basket endpoints and refresh the returned basket state.
+- Creating an order snapshot calls the backend order endpoint and marks the active basket as checked out.
+- Editing an existing configured item still shows a planned-state message until Product Details edit mode is implemented.
+- Payment remains blocked until the payment flow is implemented.
 
 ## Accessibility Notes
 Current accessibility-oriented decisions:
@@ -228,6 +258,7 @@ Primary frontend files for this design:
 - `apps/web/src/features/menu/components/ProductGrid.tsx`
 - `apps/web/src/features/menu/components/ProductCard.tsx`
 - `apps/web/src/pages/ProductDetailsPage/ProductDetailsPage.tsx`
+- `apps/web/src/pages/BasketReviewPage/BasketReviewPage.tsx`
 - `apps/web/src/features/cart/api/basketApi.ts`
 - `apps/web/src/features/cart/components/OrderFooter.tsx`
 - `apps/web/src/features/menu/api/menuApi.ts`

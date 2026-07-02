@@ -378,11 +378,14 @@ The meal builder must:
 - item-level modifier controls for selected meal options
 - frontend basket creation and configured item submission
 - backend basket totals reflected in the kiosk footer
+- configuration-aware Basket Review display
+- backend-backed basket item quantity updates and removal
+- checkout/order snapshot creation from the active basket
 
 ### Planned
 
-- configuration-aware basket display and editing
-- checkout and order snapshot creation
+- editing an existing configured basket item through Product Details
+- payment flow after order snapshot creation
 
 ## Confirmed Product Decisions
 

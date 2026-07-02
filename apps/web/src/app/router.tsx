@@ -2,17 +2,22 @@ import { useRef, useState } from "react";
 import { WelcomePage } from "../pages/WelcomePage/WelcomePage";
 import { MenuPage } from "../pages/MenuPage/MenuPage";
 import { ProductDetailsPage } from "../pages/ProductDetailsPage/ProductDetailsPage";
+import { BasketReviewPage } from "../pages/BasketReviewPage/BasketReviewPage";
 import type { Product } from "../features/menu/types/menu.types";
 import type { CartItem } from "../features/cart/types/cart.types";
 import {
   addBasketItem,
+  createOrderSnapshot,
   createBasket,
+  removeBasketItem,
+  updateBasketItemQuantity,
   type AddBasketItemRequest,
+  type OrderSnapshot,
 } from "../features/cart/api/basketApi";
 import { useMenu } from "../features/menu/hooks/useMenu";
 import type { CategoryId } from "../features/menu/types/menu.types";
 
-type AppRoute = "welcome" | "menu" | "product-details";
+type AppRoute = "welcome" | "menu" | "product-details" | "basket-review";
 export type OrderMode = "dine-in" | "take-out";
 
 function getOppositeOrderMode(orderMode: OrderMode): OrderMode {
@@ -93,6 +98,63 @@ export function AppRouter() {
     setRoute("menu");
   };
 
+  const handleReviewOrderOpen = () => {
+    setRoute("basket-review");
+  };
+
+  const handleReviewOrderClose = () => {
+    setRoute("menu");
+  };
+
+  const handleUpdateBasketItemQuantity = async (
+    basketItemId: string,
+    quantity: number,
+  ) => {
+    if (!basketIdRef.current) {
+      throw new Error("The active basket was not found.");
+    }
+
+    const basket = await updateBasketItemQuantity(
+      basketIdRef.current,
+      basketItemId,
+      quantity,
+    );
+    setCartItems(basket.items);
+    setCartSummary(basket.summary);
+  };
+
+  const handleRemoveBasketItem = async (basketItemId: string) => {
+    if (!basketIdRef.current) {
+      throw new Error("The active basket was not found.");
+    }
+
+    const basket = await removeBasketItem(basketIdRef.current, basketItemId);
+    setCartItems(basket.items);
+    setCartSummary(basket.summary);
+  };
+
+  const handleCreateOrderSnapshot = async (): Promise<OrderSnapshot> => {
+    if (!basketIdRef.current) {
+      throw new Error("The active basket was not found.");
+    }
+
+    const order = await createOrderSnapshot(basketIdRef.current);
+    basketIdRef.current = null;
+    return order;
+  };
+
+  const handleStartNewOrder = () => {
+    basketIdRef.current = null;
+    setCartItems([]);
+    setCartSummary({
+      itemCount: 0,
+      totalCents: 0,
+    });
+    setSelectedProduct(null);
+    setBasketError(null);
+    setRoute("menu");
+  };
+
   if (route === "welcome") {
     return <WelcomePage onSelectOrderMode={handleOrderModeSelect} />;
   }
@@ -108,7 +170,24 @@ export function AppRouter() {
         onAddToCart={handleAddRequest}
         onBack={handleProductDetailsClose}
         onOrderModeToggle={handleOrderModeToggle}
+        onReviewOrder={handleReviewOrderOpen}
         onSearchChange={setSearchTerm}
+      />
+    );
+  }
+
+  if (route === "basket-review") {
+    return (
+      <BasketReviewPage
+        items={cartItems}
+        orderMode={orderMode}
+        summary={cartSummary}
+        onBack={handleReviewOrderClose}
+        onCreateOrderSnapshot={handleCreateOrderSnapshot}
+        onOrderModeToggle={handleOrderModeToggle}
+        onRemoveItem={handleRemoveBasketItem}
+        onStartNewOrder={handleStartNewOrder}
+        onUpdateItemQuantity={handleUpdateBasketItemQuantity}
       />
     );
   }
@@ -131,6 +210,7 @@ export function AppRouter() {
       onCategoryChange={setActiveCategory}
       onOrderModeToggle={handleOrderModeToggle}
       onProductDetailsOpen={handleProductDetailsOpen}
+      onReviewOrder={handleReviewOrderOpen}
       onSearchChange={setSearchTerm}
     />
   );

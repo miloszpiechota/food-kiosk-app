@@ -20,6 +20,8 @@ interface TransactionMock {
   basketItem: {
     aggregate: jest.Mock;
     create: jest.Mock;
+    delete: jest.Mock;
+    findFirst: jest.Mock;
     findUnique: jest.Mock;
     update: jest.Mock;
   };
@@ -33,6 +35,8 @@ function createTransactionMock(): TransactionMock {
     basketItem: {
       aggregate: jest.fn(),
       create: jest.fn(),
+      delete: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
     },
@@ -158,6 +162,45 @@ describe('KioskBasketService', () => {
     });
   });
 
+  it('gets an active basket with ordered items', async () => {
+    const { prisma, service } = createService();
+    prisma.basket.findFirst.mockResolvedValue(
+      createBasketRecord({
+        subtotalAmount: '26.50',
+        items: [
+          {
+            id: 'basket-item-1',
+            quantity: 1,
+            unitPrice: decimal('26.50'),
+            lineTotal: decimal('26.50'),
+          },
+        ],
+      }),
+    );
+
+    await expect(service.getBasket('basket-1')).resolves.toMatchObject({
+      id: 'basket-1',
+      subtotalAmount: '26.5',
+      items: [
+        {
+          id: 'basket-item-1',
+          quantity: 1,
+        },
+      ],
+    });
+    expect(prisma.basket.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: 'basket-1',
+        status: BasketStatus.ACTIVE,
+      },
+      include: {
+        items: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+  });
+
   it('merges identical configurations and recalculates the basket subtotal', async () => {
     const {
       configuration,
@@ -261,6 +304,65 @@ describe('KioskBasketService', () => {
       configuration.fingerprint,
     );
     expect(response.subtotalAmount).toBe('53');
+  });
+
+  it('updates an item quantity and recalculates the basket subtotal', async () => {
+    const { service, transaction } = createService();
+    transaction.basketItem.findFirst.mockResolvedValue({
+      id: 'basket-item-1',
+      unitPrice: decimal('26.50'),
+    });
+    transaction.basketItem.aggregate.mockResolvedValue({
+      _sum: { lineTotal: decimal('53.00') },
+    });
+    transaction.basket.update.mockResolvedValue(
+      createBasketRecord({
+        subtotalAmount: '53.00',
+        items: [
+          {
+            id: 'basket-item-1',
+            quantity: 2,
+            unitPrice: decimal('26.50'),
+            lineTotal: decimal('53.00'),
+          },
+        ],
+      }),
+    );
+
+    const response = await service.updateItemQuantity('basket-1', 'item-1', {
+      quantity: 2,
+    });
+    const updateCall = getSingleMockArg<{
+      data: {
+        lineTotal: Prisma.Decimal;
+        quantity: number;
+      };
+    }>(transaction.basketItem.update);
+
+    expect(updateCall.data.quantity).toBe(2);
+    expect(updateCall.data.lineTotal.toString()).toBe('53');
+    expect(response.subtotalAmount).toBe('53');
+  });
+
+  it('removes an item and recalculates the basket subtotal', async () => {
+    const { service, transaction } = createService();
+    transaction.basketItem.findFirst.mockResolvedValue({
+      id: 'basket-item-1',
+    });
+    transaction.basketItem.aggregate.mockResolvedValue({
+      _sum: { lineTotal: null },
+    });
+    transaction.basket.update.mockResolvedValue(createBasketRecord());
+
+    const response = await service.removeItem('basket-1', 'basket-item-1');
+
+    expect(transaction.basketItem.delete).toHaveBeenCalledWith({
+      where: { id: 'basket-item-1' },
+    });
+    expect(response).toMatchObject({
+      subtotalAmount: '0',
+      items: [],
+    });
   });
 
   it('rejects missing or inactive baskets before writing an item', async () => {

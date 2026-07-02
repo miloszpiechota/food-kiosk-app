@@ -14,6 +14,7 @@ import {
   AddBasketItemRequest,
   BasketResponse,
   CreateBasketRequest,
+  UpdateBasketItemQuantityRequest,
 } from './kiosk-basket.types';
 import { MealConfigurationService } from './meal-configuration.service';
 import {
@@ -43,6 +44,29 @@ export class KioskBasketService {
         items: true,
       },
     });
+
+    return this.toBasketResponse(basket);
+  }
+
+  async getBasket(basketId: string): Promise<BasketResponse> {
+    const basket = await this.prisma.basket.findFirst({
+      where: {
+        id: basketId,
+        status: BasketStatus.ACTIVE,
+      },
+      include: {
+        items: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
+
+    if (!basket) {
+      throw new NotFoundException({
+        code: 'BASKET_NOT_ACTIVE',
+        message: 'The active basket was not found.',
+      });
+    }
 
     return this.toBasketResponse(basket);
   }
@@ -137,20 +161,113 @@ export class KioskBasketService {
       .then((updatedBasket) => this.toBasketResponse(updatedBasket));
   }
 
+  async updateItemQuantity(
+    basketId: string,
+    basketItemId: string,
+    request: UpdateBasketItemQuantityRequest,
+  ): Promise<BasketResponse> {
+    this.validateQuantity(request.quantity);
+
+    return this.prisma
+      .$transaction(async (transaction) => {
+        const item = await transaction.basketItem.findFirst({
+          where: {
+            id: basketItemId,
+            basketId,
+            basket: {
+              status: BasketStatus.ACTIVE,
+            },
+          },
+        });
+
+        if (!item) {
+          throw new NotFoundException({
+            code: 'BASKET_ITEM_NOT_FOUND',
+            message: 'The basket item was not found.',
+          });
+        }
+
+        await transaction.basketItem.update({
+          where: { id: basketItemId },
+          data: {
+            quantity: request.quantity,
+            lineTotal: item.unitPrice.mul(request.quantity),
+          },
+        });
+
+        return this.recalculateBasket(transaction, basketId);
+      })
+      .then((updatedBasket) => this.toBasketResponse(updatedBasket));
+  }
+
+  async removeItem(
+    basketId: string,
+    basketItemId: string,
+  ): Promise<BasketResponse> {
+    return this.prisma
+      .$transaction(async (transaction) => {
+        const item = await transaction.basketItem.findFirst({
+          where: {
+            id: basketItemId,
+            basketId,
+            basket: {
+              status: BasketStatus.ACTIVE,
+            },
+          },
+        });
+
+        if (!item) {
+          throw new NotFoundException({
+            code: 'BASKET_ITEM_NOT_FOUND',
+            message: 'The basket item was not found.',
+          });
+        }
+
+        await transaction.basketItem.delete({
+          where: { id: basketItemId },
+        });
+
+        return this.recalculateBasket(transaction, basketId);
+      })
+      .then((updatedBasket) => this.toBasketResponse(updatedBasket));
+  }
+
   private validateRequest(request: AddBasketItemRequest): void {
     if (!request.menuProductId?.trim()) {
       throw new BadRequestException('menuProductId is required.');
     }
-    if (
-      !Number.isInteger(request.quantity) ||
-      request.quantity < 1 ||
-      request.quantity > 9
-    ) {
+    this.validateQuantity(request.quantity);
+  }
+
+  private validateQuantity(quantity: number): void {
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 9) {
       throw new UnprocessableEntityException({
         code: 'INVALID_QUANTITY',
         message: 'Quantity must be between 1 and 9.',
       });
     }
+  }
+
+  private async recalculateBasket(
+    transaction: Pick<PrismaService, 'basket' | 'basketItem'>,
+    basketId: string,
+  ): Promise<BasketWithItems> {
+    const totals = await transaction.basketItem.aggregate({
+      where: { basketId },
+      _sum: { lineTotal: true },
+    });
+
+    return transaction.basket.update({
+      where: { id: basketId },
+      data: {
+        subtotalAmount: totals._sum.lineTotal ?? new Prisma.Decimal(0),
+      },
+      include: {
+        items: {
+          orderBy: { createdAt: 'asc' },
+        },
+      },
+    });
   }
 
   private loadMenuProduct(

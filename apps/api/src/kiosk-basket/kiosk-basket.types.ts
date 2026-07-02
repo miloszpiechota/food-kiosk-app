@@ -25,6 +25,10 @@ export interface AddBasketItemRequest {
   modifierSelections?: ModifierSelectionRequest[];
 }
 
+export interface UpdateBasketItemQuantityRequest {
+  quantity: number;
+}
+
 export interface BasketItemResponse {
   id: string;
   menuProductId: string;

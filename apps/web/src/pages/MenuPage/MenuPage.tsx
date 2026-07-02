@@ -29,6 +29,7 @@ interface MenuPageProps {
   onCategoryChange: (category: CategoryId) => void;
   onOrderModeToggle: () => void;
   onProductDetailsOpen: (product: Product) => void;
+  onReviewOrder: () => void;
   onSearchChange: (value: string) => void;
 }
 
@@ -49,6 +50,7 @@ export function MenuPage({
   onCategoryChange,
   onOrderModeToggle,
   onProductDetailsOpen,
+  onReviewOrder,
   onSearchChange,
 }: MenuPageProps) {
   return (
@@ -94,7 +96,11 @@ export function MenuPage({
         </div>
       </div>
 
-      <OrderFooter items={cartItems} summary={cartSummary} />
+      <OrderFooter
+        items={cartItems}
+        summary={cartSummary}
+        onReviewOrder={onReviewOrder}
+      />
     </KioskShell>
   );
 }

@@ -21,6 +21,15 @@ export interface AddBasketItemRequest {
   modifierSelections?: ModifierSelectionRequest[];
 }
 
+export interface OrderSnapshot {
+  id: string;
+  orderNumber: string;
+  paymentStatus: string;
+  status: string;
+  subtotalCents: number;
+  totalCents: number;
+}
+
 interface BasketResponse {
   id: string;
   sessionId: string;
@@ -35,6 +44,15 @@ interface BasketResponse {
     lineTotal: string;
     configuration: unknown;
   }>;
+}
+
+interface OrderResponse {
+  id: string;
+  orderNumber: string;
+  paymentStatus: string;
+  status: string;
+  subtotalAmount: string;
+  totalAmount: string;
 }
 
 export interface BasketState {
@@ -103,6 +121,14 @@ export async function createBasket(): Promise<BasketState> {
   );
 }
 
+export async function getBasket(basketId: string): Promise<BasketState> {
+  return mapBasket(
+    await request<BasketResponse>(`/api/v1/kiosk/baskets/${basketId}`, {
+      method: "GET",
+    }),
+  );
+}
+
 export async function addBasketItem(
   basketId: string,
   item: AddBasketItemRequest,
@@ -116,4 +142,52 @@ export async function addBasketItem(
       },
     ),
   );
+}
+
+export async function updateBasketItemQuantity(
+  basketId: string,
+  basketItemId: string,
+  quantity: number,
+): Promise<BasketState> {
+  return mapBasket(
+    await request<BasketResponse>(
+      `/api/v1/kiosk/baskets/${basketId}/items/${basketItemId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ quantity }),
+      },
+    ),
+  );
+}
+
+export async function removeBasketItem(
+  basketId: string,
+  basketItemId: string,
+): Promise<BasketState> {
+  return mapBasket(
+    await request<BasketResponse>(
+      `/api/v1/kiosk/baskets/${basketId}/items/${basketItemId}`,
+      {
+        method: "DELETE",
+      },
+    ),
+  );
+}
+
+export async function createOrderSnapshot(
+  basketId: string,
+): Promise<OrderSnapshot> {
+  const order = await request<OrderResponse>("/api/v1/kiosk/orders", {
+    method: "POST",
+    body: JSON.stringify({ basketId }),
+  });
+
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    paymentStatus: order.paymentStatus,
+    status: order.status,
+    subtotalCents: toCents(order.subtotalAmount),
+    totalCents: toCents(order.totalAmount),
+  };
 }

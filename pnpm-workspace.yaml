@@ -1,3 +1,4 @@
 packages:
   - "apps/*"
+  - "!apps/Product details page v2"
   - "packages/*"

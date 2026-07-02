@@ -8,9 +8,10 @@ import { BottomActionBar } from "../../../shared/layout/BottomActionBar";
 interface OrderFooterProps {
   items: CartItem[];
   summary: CartSummary;
+  onReviewOrder: () => void;
 }
 
-export function OrderFooter({ items, summary }: OrderFooterProps) {
+export function OrderFooter({ items, onReviewOrder, summary }: OrderFooterProps) {
   const hasItems = summary.itemCount > 0;
   const previewItems = items.slice(-2).reverse();
   const remainingItemCount = Math.max(summary.itemCount - 2, 0);
@@ -75,6 +76,7 @@ export function OrderFooter({ items, summary }: OrderFooterProps) {
             type="button"
             disabled={!hasItems}
             aria-disabled={!hasItems}
+            onClick={onReviewOrder}
             className={`flex min-h-16 min-w-56 flex-col items-center justify-center rounded-2xl border border-secondary/70 bg-secondary px-8 text-background shadow-xl shadow-secondary/20 transition enabled:hover:bg-secondary/90 enabled:hover:shadow-secondary/30 enabled:active:scale-95 disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:shadow-none ${focusRing}`}
           >
             <span className="text-sm font-black uppercase tracking-[0.12em]">

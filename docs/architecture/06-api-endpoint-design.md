@@ -29,9 +29,13 @@ Examples:
 - `GET /api/v1/kiosk/menus/:menuId/categories`
 - `GET /api/v1/kiosk/menu-products/:menuProductId`
 - `POST /api/v1/kiosk/baskets`
+- `GET /api/v1/kiosk/baskets/:basketId`
 - `POST /api/v1/kiosk/baskets/:basketId/items`
+- `PATCH /api/v1/kiosk/baskets/:basketId/items/:basketItemId`
+- `DELETE /api/v1/kiosk/baskets/:basketId/items/:basketItemId`
+- `POST /api/v1/kiosk/orders`
 
-Implemented basket writes validate meal groups and modifiers, calculate prices on the backend, store versioned configuration snapshots, and merge only matching normalized configurations.
+Implemented basket writes validate meal groups and modifiers, calculate prices on the backend, store versioned configuration snapshots, merge only matching normalized configurations, support quantity/removal updates, and create immutable order snapshots before payment.
 
 This keeps the customer ordering flow isolated from admin behavior.
 
@@ -176,6 +180,8 @@ Basket endpoints should:
 - validate modifier selections on the backend
 - calculate pricing on the backend
 - store configuration snapshots for checkout continuity
+- recalculate the basket subtotal after item quantity changes or removals
+- create immutable order item snapshots before payment starts
 
 ### Payment Writes
 
@@ -216,6 +222,9 @@ Implement the first API endpoints in this order:
 3. `GET /api/v1/kiosk/menu-products/:menuProductId`
 4. `POST /api/v1/kiosk/baskets`
 5. `POST /api/v1/kiosk/baskets/:basketId/items`
+6. `PATCH /api/v1/kiosk/baskets/:basketId/items/:basketItemId`
+7. `DELETE /api/v1/kiosk/baskets/:basketId/items/:basketItemId`
+8. `POST /api/v1/kiosk/orders`
 
 Reason:
 
@@ -224,3 +233,5 @@ Reason:
 - it keeps payment and admin work off the critical path for the first functional slice
 
 Detailed meal configuration, basket validation, pricing, and snapshot design is documented in [Meal Builder Architecture](./09-meal-builder-design.md).
+
+For the full frontend `fetch` to NestJS service to Prisma/PostgreSQL basket write path, see [Basket And Pricing Flow](./10-basket-pricing-flow.md).

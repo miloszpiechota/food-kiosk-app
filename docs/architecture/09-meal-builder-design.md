@@ -2,9 +2,11 @@
 
 ## Status
 
-Implemented backend foundation and initial frontend integration.
+Implemented backend foundation and frontend integration.
 
-The database relationship, read-side catalog contract, basket writes, authoritative configuration validation, pricing, snapshots, catalog loading, Product Details meal controls, and basket submission are implemented.
+The database relationship, read-side catalog contract, basket writes, basket quantity/removal updates, order snapshot creation, authoritative configuration validation, pricing, snapshots, catalog loading, Product Details meal controls, Basket Review page, and basket submission are implemented.
+
+For the full step-by-step basket write and pricing path from frontend `fetch` calls through NestJS, Prisma, and PostgreSQL, see [Basket And Pricing Flow](./10-basket-pricing-flow.md).
 
 ## Goal
 
@@ -231,7 +233,11 @@ Implemented routes:
 
 ```text
 POST /api/v1/kiosk/baskets
+GET /api/v1/kiosk/baskets/:basketId
 POST /api/v1/kiosk/baskets/:basketId/items
+PATCH /api/v1/kiosk/baskets/:basketId/items/:basketItemId
+DELETE /api/v1/kiosk/baskets/:basketId/items/:basketItemId
+POST /api/v1/kiosk/orders
 ```
 
 ```mermaid
@@ -425,7 +431,7 @@ Other useful error codes:
 - configuration fingerprint stability
 - snapshot construction
 
-Current backend unit coverage includes meal surcharge pricing, nested item modifiers, missing groups, invalid option membership, duplicate groups, duplicate modifiers, modifier quantity limits, standalone item modifiers, standalone item group rejection, negative final price rejection, configuration fingerprint stability, basket creation, configuration-aware basket-line merging, new basket-line creation, invalid quantity rejection, and missing active basket rejection.
+Current backend unit coverage includes meal surcharge pricing, nested item modifiers, missing groups, invalid option membership, duplicate groups, duplicate modifiers, modifier quantity limits, standalone item modifiers, standalone item group rejection, negative final price rejection, configuration fingerprint stability, basket creation, configuration-aware basket-line merging, new basket-line creation, basket item quantity updates, basket item removal, order snapshot creation, invalid quantity rejection, and missing active basket rejection.
 
 ### Integration Tests
 
@@ -451,7 +457,5 @@ Current backend unit coverage includes meal surcharge pricing, nested item modif
 
 ## Remaining Implementation Sequence
 
-1. Add a full configuration-aware basket review page.
-2. Support editing existing configured basket items.
-3. Persist immutable order snapshots at checkout.
-4. Add checkout and payment integration.
+1. Add Product Details edit mode for existing configured basket items.
+2. Add checkout and payment integration.

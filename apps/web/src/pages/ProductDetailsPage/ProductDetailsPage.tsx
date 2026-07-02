@@ -27,6 +27,7 @@ interface ProductDetailsPageProps {
   onAddToCart: (request: AddBasketItemRequest) => Promise<void>;
   onBack: () => void;
   onOrderModeToggle: () => void;
+  onReviewOrder: () => void;
   onSearchChange: (value: string) => void;
 }
 
@@ -41,6 +42,7 @@ export function ProductDetailsPage({
   onAddToCart,
   onBack,
   onOrderModeToggle,
+  onReviewOrder,
   onSearchChange,
 }: ProductDetailsPageProps) {
   const [detail, setDetail] = useState<ProductDetail | null>(null);
@@ -460,7 +462,11 @@ export function ProductDetailsPage({
         </div>
       </main>
 
-      <OrderFooter items={cartItems} summary={cartSummary} />
+      <OrderFooter
+        items={cartItems}
+        summary={cartSummary}
+        onReviewOrder={onReviewOrder}
+      />
     </KioskShell>
   );
 }
