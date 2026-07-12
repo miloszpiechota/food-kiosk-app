@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 
 function loadEnvironment() {
@@ -26,7 +27,9 @@ function loadEnvironment() {
 async function bootstrap() {
   loadEnvironment();
 
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
   app.enableCors({
     origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
   });

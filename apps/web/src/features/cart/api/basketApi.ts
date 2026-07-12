@@ -30,6 +30,14 @@ export interface OrderSnapshot {
   totalCents: number;
 }
 
+export interface CheckoutSession {
+  orderId: string;
+  paymentId: string;
+  checkoutSessionId: string;
+  checkoutUrl: string;
+  paymentStatus: string;
+}
+
 interface BasketResponse {
   id: string;
   sessionId: string;
@@ -53,6 +61,14 @@ interface OrderResponse {
   status: string;
   subtotalAmount: string;
   totalAmount: string;
+}
+
+interface CheckoutSessionResponse {
+  orderId: string;
+  paymentId: string;
+  checkoutSessionId: string;
+  checkoutUrl: string;
+  paymentStatus: string;
 }
 
 export interface BasketState {
@@ -103,10 +119,7 @@ function mapBasket(basket: BasketResponse): BasketState {
       configuration: item.configuration,
     })),
     summary: {
-      itemCount: basket.items.reduce(
-        (total, item) => total + item.quantity,
-        0,
-      ),
+      itemCount: basket.items.reduce((total, item) => total + item.quantity, 0),
       totalCents: toCents(basket.subtotalAmount),
     },
   };
@@ -134,13 +147,10 @@ export async function addBasketItem(
   item: AddBasketItemRequest,
 ): Promise<BasketState> {
   return mapBasket(
-    await request<BasketResponse>(
-      `/api/v1/kiosk/baskets/${basketId}/items`,
-      {
-        method: "POST",
-        body: JSON.stringify(item),
-      },
-    ),
+    await request<BasketResponse>(`/api/v1/kiosk/baskets/${basketId}/items`, {
+      method: "POST",
+      body: JSON.stringify(item),
+    }),
   );
 }
 
@@ -190,4 +200,16 @@ export async function createOrderSnapshot(
     subtotalCents: toCents(order.subtotalAmount),
     totalCents: toCents(order.totalAmount),
   };
+}
+
+export async function createCheckoutSession(
+  orderId: string,
+): Promise<CheckoutSession> {
+  return request<CheckoutSessionResponse>(
+    `/api/v1/kiosk/orders/${orderId}/checkout-session`,
+    {
+      method: "POST",
+      body: JSON.stringify({}),
+    },
+  );
 }

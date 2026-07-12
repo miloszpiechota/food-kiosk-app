@@ -8,10 +8,12 @@ import type { CartItem } from "../features/cart/types/cart.types";
 import {
   addBasketItem,
   createOrderSnapshot,
+  createCheckoutSession,
   createBasket,
   removeBasketItem,
   updateBasketItemQuantity,
   type AddBasketItemRequest,
+  type CheckoutSession,
   type OrderSnapshot,
 } from "../features/cart/api/basketApi";
 import { useMenu } from "../features/menu/hooks/useMenu";
@@ -27,8 +29,7 @@ function getOppositeOrderMode(orderMode: OrderMode): OrderMode {
 export function AppRouter() {
   const [route, setRoute] = useState<AppRoute>("welcome");
   const [orderMode, setOrderMode] = useState<OrderMode>("dine-in");
-  const [activeCategory, setActiveCategory] =
-    useState<CategoryId>("featured");
+  const [activeCategory, setActiveCategory] = useState<CategoryId>("featured");
   const [searchTerm, setSearchTerm] = useState("");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [cartSummary, setCartSummary] = useState({
@@ -143,6 +144,10 @@ export function AppRouter() {
     return order;
   };
 
+  const handleCreateCheckoutSession = (
+    orderId: string,
+  ): Promise<CheckoutSession> => createCheckoutSession(orderId);
+
   const handleStartNewOrder = () => {
     basketIdRef.current = null;
     setCartItems([]);
@@ -183,6 +188,7 @@ export function AppRouter() {
         orderMode={orderMode}
         summary={cartSummary}
         onBack={handleReviewOrderClose}
+        onCreateCheckoutSession={handleCreateCheckoutSession}
         onCreateOrderSnapshot={handleCreateOrderSnapshot}
         onOrderModeToggle={handleOrderModeToggle}
         onRemoveItem={handleRemoveBasketItem}

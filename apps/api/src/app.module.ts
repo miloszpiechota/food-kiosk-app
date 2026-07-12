@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { KioskBasketModule } from './kiosk-basket/kiosk-basket.module';
 import { KioskCatalogModule } from './kiosk-catalog/kiosk-catalog.module';
 import { KioskOrderModule } from './kiosk-order/kiosk-order.module';
+import { PaymentsModule } from './payments/payments.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 @Module({
@@ -12,6 +13,7 @@ import { PrismaModule } from './prisma/prisma.module';
     KioskCatalogModule,
     KioskBasketModule,
     KioskOrderModule,
+    PaymentsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
