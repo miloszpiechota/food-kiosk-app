@@ -5,11 +5,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-  PaymentProvider,
-  PaymentStatus,
-  Prisma,
-} from '../../../../node_modules/@prisma/client/.prisma/client';
+import { PaymentProvider, PaymentStatus, Prisma } from '@prisma/client';
 import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
 import {

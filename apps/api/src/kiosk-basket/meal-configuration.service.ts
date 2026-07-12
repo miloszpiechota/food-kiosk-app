@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { Injectable, UnprocessableEntityException } from '@nestjs/common';
-import { Prisma } from '../../../../node_modules/@prisma/client/.prisma/client';
+import { Prisma } from '@prisma/client';
 import {
   AddBasketItemRequest,
   MealConfigurationFieldError,

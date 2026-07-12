@@ -1,4 +1,4 @@
-import { Prisma } from '../../../../node_modules/@prisma/client/.prisma/client';
+import { Prisma } from '@prisma/client';
 
 export const configurableMenuProductInclude = {
   product: {

@@ -2,10 +2,7 @@ import {
   NotFoundException,
   UnprocessableEntityException,
 } from '@nestjs/common';
-import {
-  BasketStatus,
-  Prisma,
-} from '../../../../node_modules/@prisma/client/.prisma/client';
+import { BasketStatus, Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { AddBasketItemRequest } from './kiosk-basket.types';
 import { KioskBasketService } from './kiosk-basket.service';

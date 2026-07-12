@@ -8,7 +8,7 @@ import {
   PaymentStatus,
   Prisma,
   ProductType,
-} from '../../../../node_modules/@prisma/client/.prisma/client';
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { KioskOrderService } from './kiosk-order.service';
 

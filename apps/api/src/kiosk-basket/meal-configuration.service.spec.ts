@@ -1,5 +1,5 @@
 import { UnprocessableEntityException } from '@nestjs/common';
-import { Prisma } from '../../../../node_modules/@prisma/client/.prisma/client';
+import { Prisma } from '@prisma/client';
 import type { AddBasketItemRequest } from './kiosk-basket.types';
 import type { ConfigurableMenuProduct } from './meal-configuration.query';
 import { MealConfigurationService } from './meal-configuration.service';

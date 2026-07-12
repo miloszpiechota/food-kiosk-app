@@ -45,12 +45,12 @@ That made `@prisma/client` unreliable from TypeScript's point of view.
 
 ### Prisma Client Generation Path
 
-The generated Prisma Client existed, but TypeScript could not resolve `PrismaClient` through the top-level `@prisma/client` import in this pnpm workspace layout.
+The generated Prisma Client existed, but an earlier workaround imported it through a physical `node_modules` path. That worked locally on Windows for a while but failed in GitHub Actions on Linux.
 
 The failing import was:
 
 ```ts
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from "../../../../node_modules/@prisma/client/.prisma/client";
 ```
 
 ### Invalid TypeScript Deprecation Setting
@@ -98,14 +98,13 @@ prisma: ^6.19.3
 @prisma/client: ^6.19.3
 ```
 
-### 2. Generate Prisma Client Into A Stable Path
+### 2. Use Prisma's Default Client Output
 
-Update `packages/database/prisma/schema.prisma`:
+Use the standard Prisma Client generator without a custom `output` path:
 
 ```prisma
 generator client {
   provider = "prisma-client-js"
-  output   = "../../../node_modules/@prisma/client/.prisma/client"
 }
 ```
 
@@ -115,21 +114,15 @@ Then generate the client:
 pnpm.cmd db:generate
 ```
 
-### 3. Import The Generated Prisma Client
+In CI, run the same command after `pnpm install --frozen-lockfile` and before `lint`, `typecheck`, `test`, or `build`.
 
-In API code, import from the generated client path:
-
-```ts
-import { PrismaClient } from '../../../../node_modules/@prisma/client/.prisma/client';
-```
-
-In the database package client helper:
+### 3. Import Prisma Through The Public Package
 
 ```ts
-import { PrismaClient } from '../../../node_modules/@prisma/client/.prisma/client';
+import { PrismaClient, Prisma } from "@prisma/client";
 ```
 
-This fixed the missing `PrismaClient` export error.
+Do not import from `node_modules/.prisma/client` or `node_modules/@prisma/client/.prisma/client`. Those paths are package-manager internals and can differ between Windows, Linux, pnpm versions, and CI installs.
 
 ### 4. Remove Invalid `ignoreDeprecations`
 
@@ -208,7 +201,8 @@ If Windows reports `EPERM` for Prisma engine files, reboot Windows and rerun the
 ## Why This Fix Works
 
 - Prisma CLI and Prisma Client now use the same version line.
-- The generated client path is explicit and stable for this pnpm workspace.
+- The generated client is managed by Prisma and exposed through `@prisma/client`.
+- Source code no longer depends on OS-specific `node_modules` layout details.
 - TypeScript no longer receives an unsupported `ignoreDeprecations` value.
 - API build uses TypeScript directly and avoids the broken local Nest CLI dependency path.
 - Tests no longer rely on a broken `ts-jest` runtime entrypoint.

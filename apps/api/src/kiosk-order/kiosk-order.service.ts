@@ -10,7 +10,7 @@ import {
   OrderStatus,
   PaymentStatus,
   Prisma,
-} from '../../../../node_modules/@prisma/client/.prisma/client';
+} from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import type { CreateOrderRequest, OrderResponse } from './kiosk-order.types';
 
