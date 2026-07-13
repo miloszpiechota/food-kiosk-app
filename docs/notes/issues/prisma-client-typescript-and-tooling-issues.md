@@ -53,15 +53,15 @@ The failing import was:
 import { PrismaClient } from "../../../../node_modules/@prisma/client/.prisma/client";
 ```
 
-### Invalid TypeScript Deprecation Setting
+### TypeScript Deprecation Setting
 
-The API `tsconfig.json` briefly used:
+When the API package used TypeScript 5, this setting was invalid:
 
 ```json
 "ignoreDeprecations": "6.0"
 ```
 
-The installed TypeScript version rejected that value, so both typecheck and build failed.
+The TypeScript 5 compiler rejected that value, so both typecheck and build failed. The API package now uses the same TypeScript 6 line as the rest of the workspace, where this value is valid and required to acknowledge the `baseUrl` deprecation warning.
 
 ### Corrupted `node_modules`
 
@@ -124,15 +124,15 @@ import { PrismaClient, Prisma } from "@prisma/client";
 
 Do not import from `node_modules/.prisma/client` or `node_modules/@prisma/client/.prisma/client`. Those paths are package-manager internals and can differ between Windows, Linux, pnpm versions, and CI installs.
 
-### 4. Remove Invalid `ignoreDeprecations`
+### 4. Use The TypeScript 6 Deprecation Setting
 
-Remove this from `apps/api/tsconfig.json`:
+Keep this in `apps/api/tsconfig.json`:
 
 ```json
 "ignoreDeprecations": "6.0"
 ```
 
-The installed TypeScript version does not accept that value.
+The API package uses TypeScript 6, and this setting keeps `baseUrl` deprecation warnings from failing CI until the config is migrated away from `baseUrl`.
 
 ### 5. Fix API Bootstrap Lint Errors
 
@@ -203,7 +203,7 @@ If Windows reports `EPERM` for Prisma engine files, reboot Windows and rerun the
 - Prisma CLI and Prisma Client now use the same version line.
 - The generated client is managed by Prisma and exposed through `@prisma/client`.
 - Source code no longer depends on OS-specific `node_modules` layout details.
-- TypeScript no longer receives an unsupported `ignoreDeprecations` value.
+- TypeScript uses a supported `ignoreDeprecations` value for the workspace compiler version.
 - API build uses TypeScript directly and avoids the broken local Nest CLI dependency path.
 - Tests no longer rely on a broken `ts-jest` runtime entrypoint.
 - A clean install restores missing package runtime files.

@@ -10,6 +10,14 @@ Property 'basket' does not exist on type 'PrismaService'
 Property '$transaction' does not exist on type 'PrismaService'
 ```
 
+Another form of the same issue is a large lint failure where API files report unsafe Prisma usage:
+
+```txt
+Unsafe member access .basket on a type that cannot be resolved
+Unsafe member access .PAID on a type that cannot be resolved
+Unsafe construction of a type that could not be resolved
+```
+
 The first error caused the others. Once TypeScript could not resolve the Prisma generated client, `PrismaService` no longer extended a typed `PrismaClient`, so delegates such as `basket`, `order`, `menuProduct`, and `$transaction` appeared to be missing.
 
 ## Cause
@@ -32,6 +40,8 @@ generator client {
 ```
 
 The source import and generated output were not the same path in CI.
+
+With pnpm workspaces, `apps/api` and `packages/database` can also resolve separate physical `@prisma/client` package instances when their peer dependency sets differ. In this project that happened when the API package used TypeScript 5 while the rest of the workspace used TypeScript 6. Running Prisma generate only inside `packages/database` left the API package's client instance without generated types, even though `pnpm db:generate` appeared to have run before lint.
 
 ## Fix
 
@@ -60,6 +70,30 @@ pnpm build
 ```
 
 The CI workflow should run `pnpm db:generate` after `pnpm install --frozen-lockfile` and before jobs that compile, lint, or test TypeScript.
+
+The root `pnpm db:generate` script must generate both workspace client instances:
+
+```json
+"db:generate": "pnpm --filter @food-kiosk/database prisma:generate && pnpm --filter @food-kiosk/api prisma:generate"
+```
+
+The API package points Prisma at the shared schema:
+
+```json
+"prisma:generate": "prisma generate --schema ../../packages/database/prisma/schema.prisma"
+```
+
+Keep the API package on the same TypeScript peer line as the rest of the workspace so pnpm resolves one physical `@prisma/client` package:
+
+```json
+"typescript": "~6.0.2"
+```
+
+The API package also owns a Prisma CLI dev dependency so filtered API commands can run Prisma directly:
+
+```json
+"prisma": "^6.19.3"
+```
 
 ## Verification
 

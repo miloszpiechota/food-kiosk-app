@@ -9,7 +9,7 @@
     "dev:web": "pnpm --filter @food-kiosk/web dev",
     "dev:api": "pnpm --filter @food-kiosk/api start:dev",
     "db:format": "pnpm --filter @food-kiosk/database prisma:format",
-    "db:generate": "pnpm --filter @food-kiosk/database prisma:generate",
+    "db:generate": "pnpm --filter @food-kiosk/database prisma:generate && pnpm --filter @food-kiosk/api prisma:generate",
     "db:migrate:deploy": "pnpm --filter @food-kiosk/database prisma:migrate:deploy",
     "db:migrate:dev": "pnpm --filter @food-kiosk/database prisma:migrate:dev",
     "db:seed": "pnpm --filter @food-kiosk/database prisma:seed",
