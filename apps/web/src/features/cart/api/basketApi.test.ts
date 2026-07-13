@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createCheckoutSession,
   createOrderSnapshot,
+  getOrderSnapshot,
   removeBasketItem,
   updateBasketItemQuantity,
 } from "./basketApi";
@@ -145,6 +146,35 @@ describe("basket API", () => {
       checkoutSessionId: "cs_test_1",
       checkoutUrl: "https://checkout.stripe.com/pay/cs_test_1",
       paymentStatus: "AWAITING_PAYMENT_CONFIRMATION",
+    });
+  });
+
+  it("gets an order snapshot after Stripe redirects back to the kiosk", async () => {
+    const fetchMock = mockFetchJson({
+      id: "order-1",
+      orderNumber: "K-20260702-ABC123",
+      status: "NEW",
+      paymentStatus: "PAID",
+      subtotalAmount: "27.90",
+      totalAmount: "27.90",
+    });
+
+    const order = await getOrderSnapshot("order-1");
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:4000/api/v1/kiosk/orders/order-1",
+      {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+    expect(order).toEqual({
+      id: "order-1",
+      orderNumber: "K-20260702-ABC123",
+      paymentStatus: "PAID",
+      status: "NEW",
+      subtotalCents: 2790,
+      totalCents: 2790,
     });
   });
 });

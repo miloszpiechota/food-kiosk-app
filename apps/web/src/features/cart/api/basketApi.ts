@@ -202,6 +202,26 @@ export async function createOrderSnapshot(
   };
 }
 
+export async function getOrderSnapshot(
+  orderId: string,
+): Promise<OrderSnapshot> {
+  const order = await request<OrderResponse>(
+    `/api/v1/kiosk/orders/${orderId}`,
+    {
+      method: "GET",
+    },
+  );
+
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    paymentStatus: order.paymentStatus,
+    status: order.status,
+    subtotalCents: toCents(order.subtotalAmount),
+    totalCents: toCents(order.totalAmount),
+  };
+}
+
 export async function createCheckoutSession(
   orderId: string,
 ): Promise<CheckoutSession> {

@@ -65,10 +65,26 @@ Stripe redirects back to:
 
 These redirects are informational only. They do not confirm payment. Final payment state remains whatever the verified webhook writes to the backend.
 
+After the redirect, the kiosk opens a payment result screen. That screen calls:
+
+```txt
+GET /api/v1/kiosk/orders/:orderId
+```
+
+The result screen displays:
+
+- `PAID`: order accepted and payment confirmed
+- `FAILED`: payment failed
+- `CANCELLED`: checkout cancelled or payment cancelled
+- `PENDING` / `AWAITING_PAYMENT_CONFIRMATION`: confirmation still waiting for webhook state
+
+The screen polls the backend briefly so a successful webhook that arrives just after the browser redirect can still update the UI. After 30 seconds, the kiosk resets to the welcome screen for the next customer.
+
 ## Data Integrity Notes
 
 - Checkout uses `Order.totalAmount`, copied from the backend-created order snapshot.
 - The frontend never supplies Stripe amounts.
+- The frontend result page does not trust Stripe redirect query parameters as payment proof.
 - Payment and order status are separate.
 - `Payment.providerSessionId` is unique and is the primary local lookup for webhook updates.
 - Creating a new checkout session for an unpaid order updates the existing `Payment` row for that order.

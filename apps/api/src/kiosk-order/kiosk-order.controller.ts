@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post } from '@nestjs/common';
 import { KioskOrderService } from './kiosk-order.service';
 import type { CreateOrderRequest, OrderResponse } from './kiosk-order.types';
 
@@ -9,5 +9,10 @@ export class KioskOrderController {
   @Post()
   createOrder(@Body() request: CreateOrderRequest): Promise<OrderResponse> {
     return this.kioskOrderService.createOrder(request);
+  }
+
+  @Get(':orderId')
+  getOrder(@Param('orderId') orderId: string): Promise<OrderResponse> {
+    return this.kioskOrderService.getOrder(orderId);
   }
 }

@@ -76,7 +76,8 @@ Full manual test:
 8. Select `Continue to payment`.
 9. Complete Stripe Checkout with `4242 4242 4242 4242`.
 10. Return to the app after Stripe redirects.
-11. Check the Stripe listener output for a successful webhook delivery.
+11. Confirm the kiosk shows the payment result screen.
+12. Check the Stripe listener output for a successful webhook delivery.
 
 Expected Stripe CLI output:
 
@@ -116,9 +117,12 @@ status = paid
 
 The Stripe redirect back to the frontend is informational only. The order is considered paid only after the verified webhook updates `orders.payment_status` and `payments.status`.
 
+The payment result screen returns to the welcome screen automatically after 30 seconds. If the webhook is delayed, it shows a confirming state until the backend reports `paid`, `failed`, or `cancelled`.
+
 ## Implemented Local Endpoints
 
 ```txt
+GET /api/v1/kiosk/orders/:orderId
 POST /api/v1/kiosk/orders/:orderId/checkout-session
 POST /api/v1/webhooks/stripe
 ```
@@ -137,8 +141,55 @@ The Checkout Session endpoint returns:
 
 ## Troubleshooting
 
+### Checkout 503 while Stripe CLI is Ready
+
+Symptom:
+
+```txt
+POST http://localhost:4000/api/v1/kiosk/orders/:orderId/checkout-session 503
+Stripe test credentials are not configured.
+```
+
+This failure happens before Stripe Checkout is created. The API is missing a valid `STRIPE_SECRET_KEY` at the moment Nest starts.
+
+Do not confuse the two Stripe secrets:
+
+- `STRIPE_SECRET_KEY=sk_test_...` is required by `POST /api/v1/kiosk/orders/:orderId/checkout-session`.
+- `STRIPE_WEBHOOK_SECRET=whsec_...` is required by `POST /api/v1/webhooks/stripe`.
+
+`stripe listen` printing `Ready!` only confirms local webhook forwarding. It does not prove the API can create Checkout Sessions.
+
+The issue can also happen when PowerShell inherited placeholder values like `sk_test_change_me` or `whsec_your_secret`. Node keeps existing process environment values unless the app replaces them, so the API can stay misconfigured until it is restarted.
+
+Fix:
+
+1. Put real Stripe test values in the repository root `.env`.
+2. Stop the running API process.
+3. Clear inherited Stripe values from the PowerShell session.
+4. Start the API again from the repository root.
+
+```powershell
+Remove-Item Env:STRIPE_SECRET_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:STRIPE_WEBHOOK_SECRET -ErrorAction SilentlyContinue
+pnpm dev:api
+```
+
+The API environment loader replaces placeholder Stripe values with valid values from the root `.env`, but an already-running Nest process must still be restarted after `.env` changes.
+
 `STRIPE_NOT_CONFIGURED`
-: Set a real Stripe test secret key in `.env`.
+: Set a real Stripe test secret key in the repository root `.env`, then stop and restart the API. Environment changes are not applied to an API process that is already running. Do not put the real key in `packages/database/.env`; that file is only a fallback for local database tooling.
+
+If checkout returns `503 Service Unavailable`, verify that the root `.env` value starts with `sk_test_` and is not the `sk_test_change_me` placeholder. Keep the key private and do not print or commit it.
+
+The Checkout Session endpoint uses `STRIPE_SECRET_KEY`. The `whsec_...` value printed by `stripe listen` is only for webhook verification and does not create Checkout Sessions.
+
+If PowerShell inherited placeholder Stripe values, remove them before restarting the API:
+
+```powershell
+Remove-Item Env:STRIPE_SECRET_KEY -ErrorAction SilentlyContinue
+Remove-Item Env:STRIPE_WEBHOOK_SECRET -ErrorAction SilentlyContinue
+pnpm dev:api
+```
 
 `STRIPE_WEBHOOK_NOT_CONFIGURED`
 : Run `stripe listen` and copy the local `whsec_...` value.

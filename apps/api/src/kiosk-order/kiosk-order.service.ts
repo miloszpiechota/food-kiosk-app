@@ -41,6 +41,28 @@ type OrderWithItems = Prisma.OrderGetPayload<{
 export class KioskOrderService {
   constructor(private readonly prisma: PrismaService) {}
 
+  async getOrder(orderId: string): Promise<OrderResponse> {
+    if (!orderId?.trim()) {
+      throw new BadRequestException('orderId is required.');
+    }
+
+    const order = await this.prisma.order.findUnique({
+      where: { id: orderId },
+      include: {
+        items: true,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException({
+        code: 'ORDER_NOT_FOUND',
+        message: 'The order was not found.',
+      });
+    }
+
+    return this.toOrderResponse(order);
+  }
+
   async createOrder(request: CreateOrderRequest): Promise<OrderResponse> {
     if (!request.basketId?.trim()) {
       throw new BadRequestException('basketId is required.');

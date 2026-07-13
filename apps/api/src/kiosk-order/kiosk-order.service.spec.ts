@@ -38,6 +38,9 @@ function createTransactionMock(): TransactionMock {
 
 function createPrismaMock(transaction = createTransactionMock()) {
   return {
+    order: {
+      findUnique: jest.fn(),
+    },
     $transaction: jest.fn(
       (callback: (transaction: TransactionMock) => Promise<unknown>) =>
         callback(transaction),
@@ -218,6 +221,47 @@ describe('KioskOrderService', () => {
           lineTotal: '53',
         },
       ],
+    });
+  });
+
+  it('gets an order snapshot with the latest payment status', async () => {
+    const { prisma, service } = createService();
+    const order = {
+      ...createOrderRecord(),
+      paymentStatus: PaymentStatus.PAID,
+    };
+    prisma.order.findUnique.mockResolvedValue(order);
+
+    const response = await service.getOrder('order-1');
+
+    expect(prisma.order.findUnique).toHaveBeenCalledWith({
+      where: { id: 'order-1' },
+      include: {
+        items: true,
+      },
+    });
+    expect(response).toMatchObject({
+      id: 'order-1',
+      orderNumber: 'K-20260702-ABC123',
+      paymentStatus: PaymentStatus.PAID,
+      totalAmount: '53',
+    });
+  });
+
+  it('rejects a missing order lookup', async () => {
+    const { prisma, service } = createService();
+    prisma.order.findUnique.mockResolvedValue(null);
+
+    let error: unknown;
+    try {
+      await service.getOrder('order-1');
+    } catch (caught) {
+      error = caught;
+    }
+
+    expect(error).toBeInstanceOf(NotFoundException);
+    expect((error as NotFoundException).getResponse()).toMatchObject({
+      code: 'ORDER_NOT_FOUND',
     });
   });
 

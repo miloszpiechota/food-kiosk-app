@@ -3,6 +3,10 @@ import { WelcomePage } from "../pages/WelcomePage/WelcomePage";
 import { MenuPage } from "../pages/MenuPage/MenuPage";
 import { ProductDetailsPage } from "../pages/ProductDetailsPage/ProductDetailsPage";
 import { BasketReviewPage } from "../pages/BasketReviewPage/BasketReviewPage";
+import {
+  PaymentResultPage,
+  type CheckoutReturnStatus,
+} from "../pages/PaymentResultPage/PaymentResultPage";
 import type { Product } from "../features/menu/types/menu.types";
 import type { CartItem } from "../features/cart/types/cart.types";
 import {
@@ -10,6 +14,7 @@ import {
   createOrderSnapshot,
   createCheckoutSession,
   createBasket,
+  getOrderSnapshot,
   removeBasketItem,
   updateBasketItemQuantity,
   type AddBasketItemRequest,
@@ -19,15 +24,51 @@ import {
 import { useMenu } from "../features/menu/hooks/useMenu";
 import type { CategoryId } from "../features/menu/types/menu.types";
 
-type AppRoute = "welcome" | "menu" | "product-details" | "basket-review";
+type AppRoute =
+  | "welcome"
+  | "menu"
+  | "product-details"
+  | "basket-review"
+  | "payment-result";
 export type OrderMode = "dine-in" | "take-out";
+
+interface PaymentReturnState {
+  checkoutStatus: CheckoutReturnStatus;
+  orderId: string;
+}
 
 function getOppositeOrderMode(orderMode: OrderMode): OrderMode {
   return orderMode === "dine-in" ? "take-out" : "dine-in";
 }
 
+function readPaymentReturnState(): PaymentReturnState | null {
+  const params = new URLSearchParams(window.location.search);
+  const orderId = params.get("orderId");
+  const checkoutStatus = params.get("checkout");
+
+  if (!orderId) {
+    return null;
+  }
+
+  return {
+    orderId,
+    checkoutStatus:
+      checkoutStatus === "success" || checkoutStatus === "cancelled"
+        ? checkoutStatus
+        : "unknown",
+  };
+}
+
+function clearPaymentReturnUrl() {
+  window.history.replaceState(null, "", window.location.pathname || "/");
+}
+
 export function AppRouter() {
-  const [route, setRoute] = useState<AppRoute>("welcome");
+  const [paymentReturnState, setPaymentReturnState] =
+    useState<PaymentReturnState | null>(readPaymentReturnState);
+  const [route, setRoute] = useState<AppRoute>(
+    paymentReturnState ? "payment-result" : "welcome",
+  );
   const [orderMode, setOrderMode] = useState<OrderMode>("dine-in");
   const [activeCategory, setActiveCategory] = useState<CategoryId>("featured");
   const [searchTerm, setSearchTerm] = useState("");
@@ -157,8 +198,23 @@ export function AppRouter() {
     });
     setSelectedProduct(null);
     setBasketError(null);
-    setRoute("menu");
+    setSearchTerm("");
+    setActiveCategory("featured");
+    setPaymentReturnState(null);
+    clearPaymentReturnUrl();
+    setRoute("welcome");
   };
+
+  if (route === "payment-result" && paymentReturnState) {
+    return (
+      <PaymentResultPage
+        checkoutStatus={paymentReturnState.checkoutStatus}
+        orderId={paymentReturnState.orderId}
+        onGetOrder={getOrderSnapshot}
+        onStartNewOrder={handleStartNewOrder}
+      />
+    );
+  }
 
   if (route === "welcome") {
     return <WelcomePage onSelectOrderMode={handleOrderModeSelect} />;
