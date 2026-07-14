@@ -7,6 +7,7 @@ interface IconButtonProps {
   children: ReactNode;
   className?: string;
   label: string;
+  onClick?: () => void;
   variant?: "default" | "utility";
 }
 
@@ -14,6 +15,7 @@ export function IconButton({
   children,
   className = "",
   label,
+  onClick,
   variant = "default",
 }: IconButtonProps) {
   const variantClass =
@@ -25,6 +27,7 @@ export function IconButton({
     <button
       type="button"
       aria-label={label}
+      onClick={onClick}
       className={`flex size-14 items-center justify-center rounded-2xl border transition active:scale-95 ${variantClass} ${focusRing} ${className}`}
     >
       {children}

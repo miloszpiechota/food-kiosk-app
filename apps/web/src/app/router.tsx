@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { WelcomePage } from "../pages/WelcomePage/WelcomePage";
 import { MenuPage } from "../pages/MenuPage/MenuPage";
 import { ProductDetailsPage } from "../pages/ProductDetailsPage/ProductDetailsPage";
@@ -7,6 +7,15 @@ import {
   PaymentResultPage,
   type CheckoutReturnStatus,
 } from "../pages/PaymentResultPage/PaymentResultPage";
+import {
+  defaultLocale,
+  type SupportedLocale,
+} from "../shared/i18n/locales";
+import { AccessibilitySheet } from "../features/accessibility/components/AccessibilitySheet";
+import {
+  defaultAccessibilitySettings,
+  type AccessibilitySettings,
+} from "../features/accessibility/accessibility.types";
 import type { Product } from "../features/menu/types/menu.types";
 import type { CartItem } from "../features/cart/types/cart.types";
 import {
@@ -70,6 +79,10 @@ export function AppRouter() {
     paymentReturnState ? "payment-result" : "welcome",
   );
   const [orderMode, setOrderMode] = useState<OrderMode>("dine-in");
+  const [locale, setLocale] = useState<SupportedLocale>(defaultLocale);
+  const [accessibilitySettings, setAccessibilitySettings] =
+    useState<AccessibilitySettings>(defaultAccessibilitySettings);
+  const [isAccessibilityOpen, setIsAccessibilityOpen] = useState(false);
   const [activeCategory, setActiveCategory] = useState<CategoryId>("featured");
   const [searchTerm, setSearchTerm] = useState("");
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
@@ -81,7 +94,41 @@ export function AppRouter() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const basketIdRef = useRef<string | null>(null);
 
-  const menu = useMenu({ activeCategory, searchTerm });
+  const menu = useMenu({ activeCategory, locale, searchTerm });
+  const accessibilityClassName = [
+    accessibilitySettings.highContrast ? "a11y-high-contrast" : "",
+    accessibilitySettings.largeText ? "a11y-large-text" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.classList.toggle("a11y-high-contrast", accessibilitySettings.highContrast);
+    root.classList.toggle("a11y-large-text", accessibilitySettings.largeText);
+
+    return () => {
+      root.classList.remove(
+        "a11y-high-contrast",
+        "a11y-large-text",
+      );
+    };
+  }, [accessibilitySettings]);
+
+  function renderWithAccessibility(page: ReactNode) {
+    return (
+      <div className={accessibilityClassName}>
+        {page}
+        <AccessibilitySheet
+          isOpen={isAccessibilityOpen}
+          locale={locale}
+          settings={accessibilitySettings}
+          onClose={() => setIsAccessibilityOpen(false)}
+          onSettingsChange={setAccessibilitySettings}
+        />
+      </div>
+    );
+  }
 
   const handleOrderModeSelect = (mode: OrderMode) => {
     setOrderMode(mode);
@@ -148,6 +195,13 @@ export function AppRouter() {
     setRoute("menu");
   };
 
+  const handleBackToWelcome = () => {
+    setSelectedProduct(null);
+    setSearchTerm("");
+    setActiveCategory("featured");
+    setRoute("welcome");
+  };
+
   const handleUpdateBasketItemQuantity = async (
     basketItemId: string,
     quantity: number,
@@ -199,6 +253,7 @@ export function AppRouter() {
     setSelectedProduct(null);
     setBasketError(null);
     setSearchTerm("");
+    setLocale(defaultLocale);
     setActiveCategory("featured");
     setPaymentReturnState(null);
     clearPaymentReturnUrl();
@@ -206,39 +261,50 @@ export function AppRouter() {
   };
 
   if (route === "payment-result" && paymentReturnState) {
-    return (
+    return renderWithAccessibility(
       <PaymentResultPage
         checkoutStatus={paymentReturnState.checkoutStatus}
         orderId={paymentReturnState.orderId}
         onGetOrder={getOrderSnapshot}
         onStartNewOrder={handleStartNewOrder}
-      />
+      />,
     );
   }
 
   if (route === "welcome") {
-    return <WelcomePage onSelectOrderMode={handleOrderModeSelect} />;
+    return renderWithAccessibility(
+      <WelcomePage
+        locale={locale}
+        onAccessibilityOpen={() => setIsAccessibilityOpen(true)}
+        onLocaleChange={setLocale}
+        onSelectOrderMode={handleOrderModeSelect}
+      />,
+    );
   }
 
   if (route === "product-details" && selectedProduct) {
-    return (
+    return renderWithAccessibility(
       <ProductDetailsPage
         cartItems={cartItems}
         cartSummary={cartSummary}
+        locale={locale}
         orderMode={orderMode}
         product={selectedProduct}
         searchTerm={searchTerm}
         onAddToCart={handleAddRequest}
+        onAccessibilityOpen={() => setIsAccessibilityOpen(true)}
         onBack={handleProductDetailsClose}
+        onBackToWelcome={handleBackToWelcome}
+        onLocaleChange={setLocale}
         onOrderModeToggle={handleOrderModeToggle}
         onReviewOrder={handleReviewOrderOpen}
         onSearchChange={setSearchTerm}
-      />
+      />,
     );
   }
 
   if (route === "basket-review") {
-    return (
+    return renderWithAccessibility(
       <BasketReviewPage
         items={cartItems}
         orderMode={orderMode}
@@ -250,11 +316,11 @@ export function AppRouter() {
         onRemoveItem={handleRemoveBasketItem}
         onStartNewOrder={handleStartNewOrder}
         onUpdateItemQuantity={handleUpdateBasketItemQuantity}
-      />
+      />,
     );
   }
 
-  return (
+  return renderWithAccessibility(
     <MenuPage
       activeCategory={activeCategory}
       activeCategoryDetails={menu.activeCategoryDetails}
@@ -265,15 +331,19 @@ export function AppRouter() {
       actionError={basketError}
       error={menu.error}
       isLoading={menu.isLoading}
+      locale={locale}
       orderMode={orderMode}
       products={menu.products}
       searchTerm={searchTerm}
       onAddToCart={handleQuickAdd}
+      onAccessibilityOpen={() => setIsAccessibilityOpen(true)}
+      onBackToWelcome={handleBackToWelcome}
       onCategoryChange={setActiveCategory}
+      onLocaleChange={setLocale}
       onOrderModeToggle={handleOrderModeToggle}
       onProductDetailsOpen={handleProductDetailsOpen}
       onReviewOrder={handleReviewOrderOpen}
       onSearchChange={setSearchTerm}
-    />
+    />,
   );
 }

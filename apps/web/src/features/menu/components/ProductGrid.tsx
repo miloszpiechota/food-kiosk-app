@@ -36,7 +36,7 @@ export function ProductGrid({
   }
 
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto pb-48">
+    <main className="product-scroll min-h-0 flex-1 overflow-y-auto pb-48">
       <CategoryBanner category={activeCategory} />
 
       <section
@@ -84,13 +84,13 @@ function FeaturedProductGrid({
   onViewProductDetails,
 }: FeaturedProductGridProps) {
   return (
-    <main className="min-h-0 flex-1 overflow-y-auto pb-48">
+    <main className="product-scroll min-h-0 flex-1 overflow-y-auto pb-48">
       <div className="space-y-6 p-4 sm:p-6">
         <FeaturedHeroBanner banner={content.heroBanner} />
 
         <section
           aria-label="Featured menu highlights"
-          className="grid gap-4 lg:grid-cols-2"
+          className="featured-banner-list grid gap-4 lg:grid-cols-2"
         >
           {content.secondaryBanners.map((banner) => (
             <FeaturedSmallBanner key={banner.id} banner={banner} />
@@ -123,7 +123,7 @@ interface FeaturedBannerProps {
 
 function FeaturedHeroBanner({ banner }: FeaturedBannerProps) {
   return (
-    <section className="image-banner relative isolate min-h-72 overflow-hidden rounded-3xl bg-background">
+    <section className="kiosk-banner image-banner relative isolate min-h-72 overflow-hidden rounded-3xl bg-background">
       <img
         src={banner.image}
         alt=""
@@ -146,7 +146,7 @@ function FeaturedHeroBanner({ banner }: FeaturedBannerProps) {
 
 function FeaturedSmallBanner({ banner }: FeaturedBannerProps) {
   return (
-    <article className="image-banner relative isolate min-h-44 overflow-hidden rounded-3xl bg-background">
+    <article className="kiosk-banner image-banner relative isolate min-h-44 overflow-hidden rounded-3xl bg-background">
       <img
         src={banner.image}
         alt=""
@@ -237,7 +237,7 @@ interface CategoryBannerProps {
 function CategoryBanner({ category }: CategoryBannerProps) {
   if (!category.banner) {
     return (
-      <div className="border-b border-border px-4 py-6 sm:px-6">
+      <div className="kiosk-banner border-b border-border px-4 py-6 sm:px-6">
         <h2 className="text-3xl font-bold text-foreground">{category.label}</h2>
         <p className="mt-1 text-base text-muted-foreground">
           Customer favorites and quick picks
@@ -247,7 +247,7 @@ function CategoryBanner({ category }: CategoryBannerProps) {
   }
 
   return (
-    <div className="relative h-44 overflow-hidden border-b border-border sm:h-52">
+    <div className="kiosk-banner relative h-44 overflow-hidden border-b border-border sm:h-52">
       <img
         src={category.banner}
         alt=""

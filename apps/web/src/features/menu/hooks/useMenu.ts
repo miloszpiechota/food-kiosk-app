@@ -6,9 +6,12 @@ import type {
   MenuCategory,
   Product,
 } from "../types/menu.types";
+import type { SupportedLocale } from "../../../shared/i18n/locales";
+import { uiText } from "../../../shared/i18n/locales";
 
 interface UseMenuOptions {
   activeCategory: CategoryId;
+  locale: SupportedLocale;
   searchTerm: string;
 }
 
@@ -18,7 +21,7 @@ interface CatalogState {
   products: Product[];
 }
 
-export function useMenu({ activeCategory, searchTerm }: UseMenuOptions) {
+export function useMenu({ activeCategory, locale, searchTerm }: UseMenuOptions) {
   const [catalog, setCatalog] = useState<CatalogState>({
     categories: [],
     featuredContent: null,
@@ -30,7 +33,7 @@ export function useMenu({ activeCategory, searchTerm }: UseMenuOptions) {
   useEffect(() => {
     let cancelled = false;
 
-    void getCatalog()
+    void getCatalog(locale)
       .then((result) => {
         if (!cancelled) {
           setCatalog(result);
@@ -42,7 +45,7 @@ export function useMenu({ activeCategory, searchTerm }: UseMenuOptions) {
           setError(
             reason instanceof Error
               ? reason.message
-              : "The menu could not be loaded.",
+              : uiText[locale].menu.loadError,
           );
         }
       })
@@ -55,14 +58,14 @@ export function useMenu({ activeCategory, searchTerm }: UseMenuOptions) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [locale]);
 
   const activeCategoryDetails =
     catalog.categories.find((category) => category.id === activeCategory) ??
     catalog.categories[0] ?? {
       id: "featured",
       code: "featured",
-      label: "For You",
+      label: uiText[locale].menu.featuredCategory,
       icon: "sparkles" as const,
     };
 

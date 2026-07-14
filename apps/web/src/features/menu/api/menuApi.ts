@@ -6,6 +6,8 @@ import type {
   ProductDetail,
   ProductLabel,
 } from "../types/menu.types";
+import type { SupportedLocale } from "../../../shared/i18n/locales";
+import { uiText } from "../../../shared/i18n/locales";
 
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 const FALLBACK_IMAGE =
@@ -162,7 +164,8 @@ function mapMealSizeVariant(
   };
 }
 
-export async function getCatalog(locale = "en"): Promise<CatalogBootstrap> {
+export async function getCatalog(locale: SupportedLocale = "en"): Promise<CatalogBootstrap> {
+  const text = uiText[locale].menu;
   const activeMenu = await request<ActiveMenuResponse>(
     `/api/v1/kiosk/menus/active?locale=${encodeURIComponent(locale)}`,
   );
@@ -201,7 +204,7 @@ export async function getCatalog(locale = "en"): Promise<CatalogBootstrap> {
     {
       id: "featured",
       code: "featured",
-      label: "For You",
+      label: text.featuredCategory,
       icon: "sparkles",
     },
     ...databaseCategories,
@@ -213,9 +216,8 @@ export async function getCatalog(locale = "en"): Promise<CatalogBootstrap> {
     featuredContent: {
       heroBanner: {
         id: "hero-fresh-picks",
-        title: "Fresh picks for today",
-        description:
-          "Start with customer favorites, current meals, and lighter options.",
+        title: text.featuredContent.heroBanner.title,
+        description: text.featuredContent.heroBanner.description,
         image:
           "https://images.unsplash.com/photo-1498837167922-ddd27525d352?w=1400&h=520&fit=crop",
         tone: "primary",
@@ -223,22 +225,22 @@ export async function getCatalog(locale = "en"): Promise<CatalogBootstrap> {
       secondaryBanners: [
         {
           id: "plant-based",
-          title: "Build your meal",
-          description: "Choose each included item and customize supported options.",
+          title: text.featuredContent.buildMeal.title,
+          description: text.featuredContent.buildMeal.description,
           image:
             "https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=700&h=360&fit=crop",
           tone: "primary",
         },
         {
           id: "meal-upgrades",
-          title: "Make it large",
-          description: "Linked large meals use their own sides, drinks, and pricing.",
+          title: text.featuredContent.makeLarge.title,
+          description: text.featuredContent.makeLarge.description,
           image:
             "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=700&h=360&fit=crop",
           tone: "secondary",
         },
       ],
-      quickFilters: ["Plant Based", "Gluten Free", "Popular", "New", "No sugar"],
+      quickFilters: [...text.featuredContent.quickFilters],
       newProducts: featuredSource.slice(0, 3),
       recommendedProducts: featuredSource.slice(3, 6).length
         ? featuredSource.slice(3, 6)

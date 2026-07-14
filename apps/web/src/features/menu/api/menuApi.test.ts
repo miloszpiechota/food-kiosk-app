@@ -91,9 +91,10 @@ describe("menu API", () => {
       });
     });
 
-    const catalog = await getCatalog();
+    const catalog = await getCatalog("pl");
 
     expect(catalog.categories[0].id).toBe("featured");
+    expect(catalog.categories[0].label).toBe("Dla Ciebie");
     expect(catalog.categories[1]).toMatchObject({
       id: "category-meals",
       label: "Meals",
@@ -102,5 +103,31 @@ describe("menu API", () => {
       menuProductId: "menu-product-1",
       priceCents: 2000,
     });
+    expect(catalog.featuredContent.heroBanner.title).toBe(
+      "Dzisiejsze propozycje",
+    );
+  });
+
+  it("passes the selected locale to catalog endpoints", async () => {
+    const requestedUrls: string[] = [];
+    const responses = [
+      { id: "menu-1", currencyCode: "PLN" },
+      { categories: [] },
+    ];
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+      requestedUrls.push(String(input));
+      const body = responses.shift();
+      return new Response(JSON.stringify(body), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    await getCatalog("pl");
+
+    expect(requestedUrls).toEqual([
+      "http://localhost:4000/api/v1/kiosk/menus/active?locale=pl",
+      "http://localhost:4000/api/v1/kiosk/menus/menu-1/categories?locale=pl",
+    ]);
   });
 });

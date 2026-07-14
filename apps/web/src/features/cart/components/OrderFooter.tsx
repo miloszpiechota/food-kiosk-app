@@ -1,29 +1,38 @@
-import { ShoppingCart } from "lucide-react";
+import { CircleHelp, ShoppingCart } from "lucide-react";
 import { AccessibilityButton } from "../../accessibility/components/AccessibilityButton";
 import type { CartItem, CartSummary } from "../types/cart.types";
 import { Price } from "../../../shared/components/Price";
-import { focusRing } from "../../../shared/components/IconButton";
+import { focusRing, IconButton } from "../../../shared/components/IconButton";
 import { BottomActionBar } from "../../../shared/layout/BottomActionBar";
 
 interface OrderFooterProps {
   items: CartItem[];
   summary: CartSummary;
+  onAccessibilityOpen: () => void;
   onReviewOrder: () => void;
 }
 
-export function OrderFooter({ items, onReviewOrder, summary }: OrderFooterProps) {
+export function OrderFooter({
+  items,
+  onAccessibilityOpen,
+  onReviewOrder,
+  summary,
+}: OrderFooterProps) {
   const hasItems = summary.itemCount > 0;
   const previewItems = items.slice(-2).reverse();
   const remainingItemCount = Math.max(summary.itemCount - 2, 0);
 
   return (
     <BottomActionBar>
-      <div className="flex shrink-0 items-center">
-        <AccessibilityButton />
+      <div className="footer-utility-actions relative flex shrink-0 items-center gap-3">
+        <AccessibilityButton onClick={onAccessibilityOpen} />
+        <IconButton label="Call for help" variant="utility">
+          <CircleHelp aria-hidden="true" className="size-6" />
+        </IconButton>
       </div>
 
       <div className="ml-auto flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <div className="flex min-w-0 items-center gap-4 rounded-3xl border border-border bg-background/60 p-3 sm:w-[32rem]">
+        <div className="footer-order-summary flex min-w-0 items-center gap-4 rounded-3xl border border-border bg-background/60 p-3 sm:w-[32rem]">
           <div
             className={`flex size-14 shrink-0 items-center justify-center rounded-2xl ${
               hasItems ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"

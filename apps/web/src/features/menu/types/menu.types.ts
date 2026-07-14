@@ -1,12 +1,7 @@
 export type CategoryId = string;
 
 export type ProductLabel = "Popular" | "New" | "Vegetarian";
-export type QuickFilterLabel =
-  | "Plant Based"
-  | "Gluten Free"
-  | "Popular"
-  | "New"
-  | "No sugar";
+export type QuickFilterLabel = string;
 
 export type CategoryIcon =
   | "bakery"

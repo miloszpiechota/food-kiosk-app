@@ -9,6 +9,8 @@ import type {
   MenuCategory,
   Product,
 } from "../../features/menu/types/menu.types";
+import type { SupportedLocale } from "../../shared/i18n/locales";
+import { uiText } from "../../shared/i18n/locales";
 import { Header } from "../../shared/layout/Header";
 import { KioskShell } from "../../shared/layout/KioskShell";
 
@@ -22,11 +24,15 @@ interface MenuPageProps {
   error: string | null;
   featuredContent: FeaturedMenuContent | null;
   isLoading: boolean;
+  locale: SupportedLocale;
   orderMode: OrderMode;
   products: Product[];
   searchTerm: string;
   onAddToCart: (product: Product) => void;
+  onAccessibilityOpen: () => void;
+  onBackToWelcome: () => void;
   onCategoryChange: (category: CategoryId) => void;
+  onLocaleChange: (locale: SupportedLocale) => void;
   onOrderModeToggle: () => void;
   onProductDetailsOpen: (product: Product) => void;
   onReviewOrder: () => void;
@@ -43,26 +49,35 @@ export function MenuPage({
   error,
   featuredContent,
   isLoading,
+  locale,
   orderMode,
   products,
   searchTerm,
   onAddToCart,
+  onAccessibilityOpen,
+  onBackToWelcome,
   onCategoryChange,
+  onLocaleChange,
   onOrderModeToggle,
   onProductDetailsOpen,
   onReviewOrder,
   onSearchChange,
 }: MenuPageProps) {
+  const text = uiText[locale].menu;
+
   return (
     <KioskShell className="flex flex-col">
       <Header
+        locale={locale}
         orderMode={orderMode}
         searchTerm={searchTerm}
+        onBrandClick={onBackToWelcome}
+        onLocaleChange={onLocaleChange}
         onOrderModeToggle={onOrderModeToggle}
         onSearchChange={onSearchChange}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <div className="kiosk-main-layout flex min-h-0 flex-1 flex-col md:flex-row">
         <CategoryTabs
           activeCategory={activeCategory}
           categories={categories}
@@ -78,7 +93,7 @@ export function MenuPage({
             </p>
           )}
           {isLoading ? (
-            <MenuStatus message="Loading menu…" />
+            <MenuStatus message={text.loading} />
           ) : error ? (
             <MenuStatus message={error} />
           ) : featuredContent ? (
@@ -91,13 +106,14 @@ export function MenuPage({
               onViewProductDetails={onProductDetailsOpen}
             />
           ) : (
-            <MenuStatus message="No active menu is available." />
+            <MenuStatus message={text.noActiveMenu} />
           )}
         </div>
       </div>
 
       <OrderFooter
         items={cartItems}
+        onAccessibilityOpen={onAccessibilityOpen}
         summary={cartSummary}
         onReviewOrder={onReviewOrder}
       />

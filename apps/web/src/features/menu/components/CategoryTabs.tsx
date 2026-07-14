@@ -37,7 +37,7 @@ export function CategoryTabs({
   onCategoryChange,
 }: CategoryTabsProps) {
   return (
-    <aside className="min-h-0 border-b border-border bg-sidebar md:w-60 md:shrink-0 md:border-b-0 md:border-r">
+    <aside className="category-tabs min-h-0 border-b border-border bg-sidebar md:w-60 md:shrink-0 md:border-b-0 md:border-r">
       <nav
         aria-label="Menu categories"
         className="flex gap-2 overflow-x-auto p-3 md:h-full md:flex-col md:overflow-y-auto md:p-4"

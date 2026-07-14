@@ -8,7 +8,7 @@ interface KioskShellProps {
 export function KioskShell({ children, className = "" }: KioskShellProps) {
   return (
     <div
-      className={`min-h-dvh overflow-hidden bg-background text-foreground ${className}`}
+      className={`kiosk-shell min-h-dvh overflow-hidden bg-background text-foreground ${className}`}
     >
       {children}
     </div>

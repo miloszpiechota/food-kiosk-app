@@ -15,17 +15,22 @@ import type {
 } from "../../features/menu/types/menu.types";
 import { focusRing } from "../../shared/components/IconButton";
 import { Price } from "../../shared/components/Price";
+import type { SupportedLocale } from "../../shared/i18n/locales";
 import { Header } from "../../shared/layout/Header";
 import { KioskShell } from "../../shared/layout/KioskShell";
 
 interface ProductDetailsPageProps {
   cartItems: CartItem[];
   cartSummary: CartSummary;
+  locale: SupportedLocale;
   orderMode: OrderMode;
   product: Product;
   searchTerm: string;
   onAddToCart: (request: AddBasketItemRequest) => Promise<void>;
+  onAccessibilityOpen: () => void;
   onBack: () => void;
+  onBackToWelcome: () => void;
+  onLocaleChange: (locale: SupportedLocale) => void;
   onOrderModeToggle: () => void;
   onReviewOrder: () => void;
   onSearchChange: (value: string) => void;
@@ -36,11 +41,15 @@ type ModifierQuantities = Record<string, number>;
 export function ProductDetailsPage({
   cartItems,
   cartSummary,
+  locale,
   orderMode,
   product,
   searchTerm,
   onAddToCart,
+  onAccessibilityOpen,
   onBack,
+  onBackToWelcome,
+  onLocaleChange,
   onOrderModeToggle,
   onReviewOrder,
   onSearchChange,
@@ -63,13 +72,13 @@ export function ProductDetailsPage({
     void loadDetail(product);
     // Product identity is stable while this page is mounted.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [product.menuProductId]);
+  }, [locale, product.menuProductId]);
 
   async function loadDetail(targetProduct: Product) {
     setIsLoading(true);
     setError(null);
     try {
-      const nextDetail = await getProductDetail(targetProduct);
+      const nextDetail = await getProductDetail(targetProduct, locale);
       setDetail(nextDetail);
       setGroupSelections(
         Object.fromEntries(
@@ -235,13 +244,16 @@ export function ProductDetailsPage({
   return (
     <KioskShell className="flex flex-col">
       <Header
+        locale={locale}
         orderMode={orderMode}
         searchTerm={searchTerm}
+        onBrandClick={onBackToWelcome}
+        onLocaleChange={onLocaleChange}
         onOrderModeToggle={onOrderModeToggle}
         onSearchChange={onSearchChange}
       />
 
-      <main className="min-h-0 flex-1 overflow-y-auto pb-48">
+      <main className="product-scroll min-h-0 flex-1 overflow-y-auto pb-48">
         <div className="mx-auto max-w-screen-2xl">
           {isLoading ? (
             <ProductDetailsSkeleton />
@@ -464,6 +476,7 @@ export function ProductDetailsPage({
 
       <OrderFooter
         items={cartItems}
+        onAccessibilityOpen={onAccessibilityOpen}
         summary={cartSummary}
         onReviewOrder={onReviewOrder}
       />
