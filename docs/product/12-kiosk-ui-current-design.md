@@ -22,18 +22,20 @@ Implemented in the current frontend design:
 - Basket Review page with configuration summaries
 - Backend basket item quantity updates and removal from Basket Review
 - Backend order snapshot creation before payment
+- Stripe Checkout session creation from Basket Review
+- Stripe redirect handling through Payment Result page
+- Backend-backed payment status polling after Stripe redirects back to the kiosk
 - Cart summary footer
 - Accessibility and language utility buttons
-- Loading and error states for menu, product details, and basket writes
+- Loading and error states for menu, product details, basket writes, checkout, and payment result
 
 Not implemented yet:
 
 - Backend-backed basket item editing
-- Checkout flow
-- Payment flow
 - Detailed configuration display in the cart footer
 - Advanced accessibility settings panel
 - Real language switching
+- Admin UI and protected admin workflows
 
 ## Visual Direction
 The UI uses a neutral restaurant kiosk style that can work for fast food, cafes, bakeries, desserts, drinks, or casual restaurants.
@@ -197,7 +199,6 @@ Current order summary behavior:
 Important limitation:
 
 - The checkout button opens Basket Review when the cart has items.
-- Payment is not implemented yet.
 - The footer does not yet expose full configuration details or item editing.
 
 ## Basket Review Page
@@ -225,8 +226,29 @@ Current behavior:
 - It does not invent tax, discounts, or payment totals.
 - Quantity changes and item removal call backend basket endpoints and refresh the returned basket state.
 - Creating an order snapshot calls the backend order endpoint and marks the active basket as checked out.
+- Continuing to payment creates a Stripe Checkout Session from the backend-created order snapshot.
+- The browser is redirected to Stripe Checkout using the backend-returned checkout URL.
 - Editing an existing configured item still shows a planned-state message until Product Details edit mode is implemented.
-- Payment remains blocked until the payment flow is implemented.
+
+## Payment Result Page
+
+The Payment Result page is opened when Stripe redirects back to the kiosk after checkout.
+
+Current elements:
+
+- order number when available
+- payment status message
+- success, cancelled, failed, and waiting states
+- retry/status polling behavior while webhook confirmation is still pending
+- action to start a new order
+
+Current behavior:
+
+- Stripe redirect query parameters are treated as informational only.
+- The page calls the backend order endpoint to read the latest stored payment status.
+- The page polls briefly so a verified webhook that arrives just after the redirect can still update the UI.
+- Payment is considered confirmed only when the backend reports a webhook-confirmed paid state.
+- After completion, the kiosk can return to the welcome screen for the next customer.
 
 ## Accessibility Notes
 Current accessibility-oriented decisions:
@@ -259,6 +281,7 @@ Primary frontend files for this design:
 - `apps/web/src/features/menu/components/ProductCard.tsx`
 - `apps/web/src/pages/ProductDetailsPage/ProductDetailsPage.tsx`
 - `apps/web/src/pages/BasketReviewPage/BasketReviewPage.tsx`
+- `apps/web/src/pages/PaymentResultPage/PaymentResultPage.tsx`
 - `apps/web/src/features/cart/api/basketApi.ts`
 - `apps/web/src/features/cart/components/OrderFooter.tsx`
 - `apps/web/src/features/menu/api/menuApi.ts`
