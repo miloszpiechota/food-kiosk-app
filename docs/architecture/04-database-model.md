@@ -4,7 +4,7 @@
 This document translates the current domain model into a relational database design for PostgreSQL and Prisma.
 
 ## Summary
-The database model is designed around one restaurant with multiple menus, reusable categories, reusable products, menu-specific pricing, recurring availability rules, one-off availability exceptions, configurable meals, ingredient personalization, basket and order snapshots, and protected admin access.
+The database model is designed around many restaurants with restaurant-owned menus, reusable categories, reusable products, menu-specific pricing, recurring availability rules, one-off availability exceptions, configurable meals, ingredient personalization, basket and order snapshots, and protected admin access.
 
 ## Database Conventions
 - Use PostgreSQL as the primary database engine.
@@ -22,7 +22,7 @@ The database model is designed around one restaurant with multiple menus, reusab
 
 #### `restaurants`
 Purpose:
-- Root business entity for the MVP
+- Root business entity for menus, catalog, kiosk orders, and restaurant-scoped admin access
 
 Key columns:
 - `id uuid pk`
@@ -448,12 +448,52 @@ Purpose:
 Key columns:
 - `id uuid pk`
 - `email text`
-- `password_hash text`
+- `password_hash text null`
 - `role admin_role`
+- `two_factor_secret text null`
+- `two_factor_enabled boolean`
 - `is_active boolean`
 - `last_login_at timestamptz null`
 - `created_at timestamptz`
 - `updated_at timestamptz`
+
+#### `admin_restaurant_access`
+Purpose:
+- Assign admin users to restaurants they can operate
+
+Key columns:
+- `id uuid pk`
+- `admin_user_id uuid fk -> admin_users.id`
+- `restaurant_id uuid fk -> restaurants.id`
+- `created_at timestamptz`
+
+#### `admin_invites`
+Purpose:
+- Store super-admin-created invitation state without storing raw invite tokens
+
+Key columns:
+- `id uuid pk`
+- `email text`
+- `role admin_role`
+- `restaurant_id uuid fk -> restaurants.id null`
+- `token_hash text`
+- `expires_at timestamptz`
+- `accepted_at timestamptz null`
+- `created_by_id uuid fk -> admin_users.id`
+- `created_at timestamptz`
+
+#### `admin_login_challenges`
+Purpose:
+- Store short-lived password, TOTP, or QR login challenges before a full admin session is issued
+
+Key columns:
+- `id uuid pk`
+- `admin_user_id uuid fk -> admin_users.id`
+- `token_hash text`
+- `challenge_type admin_login_challenge_type`
+- `expires_at timestamptz`
+- `consumed_at timestamptz null`
+- `created_at timestamptz`
 
 #### `admin_sessions`
 Purpose:
@@ -506,7 +546,12 @@ Key columns:
 - `stripe`
 
 ### `admin_role`
+- `super_admin`
 - `admin`
+
+### `admin_login_challenge_type`
+- `totp`
+- `qr_login`
 
 ### `availability_override_type`
 - `closure`
@@ -532,6 +577,9 @@ Key columns:
 - `payments.order_id` unique if one payment record per order is enforced
 - `payments.provider_session_id` unique
 - `admin_users.email` unique
+- `admin_restaurant_access(admin_user_id, restaurant_id)` unique
+- `admin_invites.token_hash` unique
+- `admin_login_challenges.token_hash` unique
 - `admin_sessions.token_id` unique
 
 ### Recommended Check Constraints
@@ -555,6 +603,12 @@ Key columns:
 - indexes on availability rule and exception foreign keys plus active flags
 - `orders(created_at)`
 - `orders(status, payment_status)`
+- `orders(restaurant_id, created_at)`
+- `orders(restaurant_id, status, payment_status)`
+- `admin_restaurant_access(admin_user_id)`
+- `admin_restaurant_access(restaurant_id)`
+- `admin_invites(email, expires_at, accepted_at)`
+- `admin_login_challenges(admin_user_id, expires_at, consumed_at)`
 - `admin_sessions(admin_user_id, expires_at, revoked_at)`
 
 ## Snapshot Strategy
@@ -593,7 +647,18 @@ Recommended contents:
 - Evaluate menu-category rules and exceptions.
 - Evaluate menu-product rules and exceptions.
 - Apply direct visibility flags such as `is_visible` and `is_available`.
+- For meals and large meals, verify that every required product group still has at least one available option after product and group-option visibility is resolved.
 - Treat one-off exceptions as higher priority than recurring rules.
+
+## Admin Auth Strategy
+- Use invite links instead of emailed passwords.
+- Store only invite token hashes.
+- Store password hashes with a strong password hashing algorithm such as Argon2.
+- Require TOTP-based two-factor authentication before creating a full admin session.
+- Store TOTP secrets carefully and never expose them after setup.
+- Use QR codes for TOTP enrollment. QR-assisted login requires a separate trusted-device challenge flow.
+- Scope `ADMIN` users through `admin_restaurant_access`.
+- `SUPER_ADMIN` may have platform-wide access or explicit restaurant access rows, depending on implementation simplicity.
 
 ## Prisma Notes
 - Prefer Prisma `Decimal` for all monetary columns.

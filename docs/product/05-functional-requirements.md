@@ -26,14 +26,20 @@ Define the user-visible and system-visible capabilities required for the MVP of 
 - `FR-018`: The system shall store confirmed orders so they can be managed by restaurant administrators.
 
 ## Admin Access
-- `FR-019`: The system shall provide an administrator registration flow for access to the admin area.
-- `FR-020`: The system shall provide an administrator login flow for access to the admin area.
+- `FR-019`: The system shall allow a super admin to invite selected restaurant workers to the admin area.
+- `FR-020`: The system shall provide an invite acceptance flow where admins set their own password and configure mandatory two-factor authentication.
 - `FR-021`: The system shall restrict the admin area to authenticated administrators only.
+- `FR-021A`: The system shall support `SUPER_ADMIN` and `ADMIN` roles.
+- `FR-021B`: The system shall scope restaurant admin access to assigned restaurants.
+- `FR-021C`: The system shall support email and password login followed by mandatory two-factor verification.
+- `FR-021D`: The system may support QR-assisted admin login only through a secure trusted-device challenge flow.
 
 ## Admin Order Management
 - `FR-022`: The system shall allow an authenticated administrator to view incoming orders.
 - `FR-023`: The system shall allow an authenticated administrator to review order details, including meal selections and product personalization.
 - `FR-024`: The system shall allow an authenticated administrator to update order status.
+- `FR-024A`: The system shall allow authenticated administrators to search and filter orders by restaurant, order number, order status, payment status, date range, and item text where practical.
+- `FR-024B`: The system shall show crucial order details, including order id, order number, restaurant, ordered items, item ids, product ids, menu product ids, payment provider, payment identifiers, payment status, subtotal, total price, and timestamps.
 
 ## Accessibility And UI Controls
 - `FR-025`: The system shall provide a kiosk-oriented interface that is clear and usable for touch-based ordering.
@@ -45,8 +51,8 @@ Define the user-visible and system-visible capabilities required for the MVP of 
 - `FR-031`: The system shall reset the kiosk language to the configured default after order completion or kiosk session timeout so the next customer starts from a predictable state.
 
 ## Menu Structure And Availability
-- `FR-032`: The system shall support one restaurant as the owner of menus, categories, and products.
-- `FR-033`: The system shall support multiple menus for the restaurant.
+- `FR-032`: The system shall support many restaurants as owners of menus, categories, products, orders, and admin access.
+- `FR-033`: The system shall support multiple menus per restaurant.
 - `FR-034`: The system shall allow categories to be shared across menus.
 - `FR-035`: The system shall allow products to be shared across menus and categories.
 - `FR-036`: The system shall support menu-specific product pricing.
@@ -54,9 +60,12 @@ Define the user-visible and system-visible capabilities required for the MVP of 
 - `FR-038`: The system shall support date and time-based availability rules for categories within menus.
 - `FR-039`: The system shall support date and time-based availability rules for products within menus or menu categories.
 - `FR-040`: The system shall allow an authenticated administrator to hide, unhide, or schedule menus, categories, and products.
+- `FR-041`: The system shall prevent public kiosk responses from showing a meal or large meal when any required meal group has no visible and available option.
+- `FR-042`: The system shall apply product hiding to meal-option availability, so hiding the only available product in a required group also makes affected meals unavailable to customers.
 
 ## Notes
 - These requirements describe planned functionality and do not imply current implementation.
 - Detailed meal and large-meal behavior is specified in [Meal Builder Requirements](./13-meal-builder-requirements.md).
+- Admin authentication and order-management behavior is specified in [Admin Auth And Order Management](../architecture/12-admin-auth-and-order-management.md).
 - Automated upsell recommendations are intentionally excluded from the current MVP functional scope and should be treated as Later.
 - More detailed validation rules, security constraints, and accessibility standards should be defined in later discovery documents.

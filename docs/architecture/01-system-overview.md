@@ -4,7 +4,7 @@
 This document describes the high-level system architecture of the Food Ordering Kiosk App and the main responsibilities of each major part of the platform.
 
 ## Summary
-The Food Ordering Kiosk App is planned as a full-stack web application with a kiosk-oriented customer frontend, a protected admin area, a backend API, a relational database, and Stripe test-mode payment integration. The system is intended to support one restaurant with multiple menus, shared categories and products, menu-specific pricing, scheduled availability, and both simple standalone products and configurable meals with grouped selections and ingredient personalization. The project is organized as a monorepo to keep frontend, backend, shared packages, and documentation in one repository.
+The Food Ordering Kiosk App is planned as a full-stack web application with a kiosk-oriented customer frontend, a protected admin area, a backend API, a relational database, and Stripe test-mode payment integration. The system is intended to support many restaurants, each with restaurant-owned menus, shared categories and products, menu-specific pricing, scheduled availability, and both simple standalone products and configurable meals with grouped selections and ingredient personalization. The project is organized as a monorepo to keep frontend, backend, shared packages, and documentation in one repository.
 
 ## Core Architecture
 - Frontend application in `apps/web`
@@ -33,11 +33,13 @@ Responsibilities:
 The admin area is part of the web product scope and is intended for restaurant administrators only.
 
 Responsibilities:
-- Provide administrator login and registration flow
+- Provide super-admin invite flow and administrator login
+- Require two-factor authentication for admin access
 - Restrict access to protected admin features
-- Display incoming orders
-- Display payment-related states
+- Display incoming orders for assigned restaurants
+- Display payment-related states separately from order status
 - Allow order status management
+- Allow restaurant-scoped menu search and product visibility management
 
 ### 3. Backend API
 The backend is a NestJS application responsible for core business logic and trusted system operations.

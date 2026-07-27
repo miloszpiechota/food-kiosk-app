@@ -4,7 +4,7 @@ Production-style full-stack food ordering kiosk app built with React, TypeScript
 
 ## Status
 
-Customer kiosk MVP flow implemented through Stripe test checkout. Admin authentication, admin order management, deployment, and final portfolio polish remain in progress.
+Customer kiosk MVP flow implemented through Stripe test checkout. Multi-restaurant admin authentication, admin order management, deployment, and final portfolio polish remain in progress.
 
 ## Implemented Core Features
 
@@ -22,7 +22,12 @@ Customer kiosk MVP flow implemented through Stripe test checkout. Admin authenti
 ## Planned Core Features
 
 - Admin dashboard
+- Multi-restaurant admin access
+- Super-admin invite links
+- Mandatory two-factor authentication
 - Order status management
+- Admin order search and detail views
+- Menu product hide/unhide controls
 - Accessibility settings
 - Security-focused admin area
 - Dev, staging, and production environments

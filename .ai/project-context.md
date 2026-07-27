@@ -16,7 +16,8 @@ Build a realistic food ordering kiosk that demonstrates full-stack engineering s
 - Product categories, menu items, meals, large meals, modifiers, and extras
 - Cart and checkout flow
 - Stripe test checkout and verified webhook confirmation
-- Admin order management
+- Multi-restaurant admin authentication, authorization, and order management
+- Super-admin invite flow with mandatory two-factor authentication
 - Accessibility-aware kiosk UI
 - Tests, CI, Docker, and deployment documentation
 
@@ -45,8 +46,11 @@ Implemented:
 
 Planned or incomplete:
 - Backend-backed edit mode for existing configured basket items
-- Admin authentication and protected admin workflows
-- Admin order list, order detail, and order status management
+- Multi-restaurant admin authentication and protected admin workflows
+- Super-admin invite links, TOTP setup, and mandatory two-factor login
+- Admin restaurant-access scoping
+- Admin order list, search, filtering, detail, and order status management
+- Admin menu-product search and hide/unhide flows with meal availability rules
 - Admin UI
 - End-to-end browser tests
 - Accessibility automation

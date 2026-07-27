@@ -49,13 +49,20 @@ Use:
 
 Examples:
 
+- `POST /api/v1/admin/auth/invites`
+- `POST /api/v1/admin/auth/invites/:token/accept`
 - `POST /api/v1/admin/auth/login`
+- `POST /api/v1/admin/auth/totp/verify`
 - `POST /api/v1/admin/auth/logout`
+- `GET /api/v1/admin/auth/me`
+- `GET /api/v1/admin/restaurants`
 - `GET /api/v1/admin/orders`
+- `GET /api/v1/admin/orders/:orderId`
 - `PATCH /api/v1/admin/orders/:orderId/status`
-- `GET /api/v1/admin/menus`
+- `GET /api/v1/admin/menu-products`
+- `PATCH /api/v1/admin/menu-products/:menuProductId/visibility`
 
-Admin endpoints should always require authentication and authorization.
+Admin endpoints should always require authentication and authorization. Restaurant-scoped admin endpoints must check that the authenticated admin has access to the requested restaurant.
 
 ### Webhooks
 
@@ -125,7 +132,9 @@ Use query parameters for read filters.
 Examples:
 
 - `GET /api/v1/kiosk/menus/:menuId/categories?locale=pl`
-- `GET /api/v1/admin/orders?status=new&page=1&pageSize=20`
+- `GET /api/v1/admin/orders?restaurantId=...&status=new&paymentStatus=paid&page=1&pageSize=20`
+- `GET /api/v1/admin/orders?search=K-20260727&page=1&pageSize=20`
+- `GET /api/v1/admin/menu-products?restaurantId=...&search=fries&page=1&pageSize=20`
 
 Recommended rules:
 
@@ -147,6 +156,8 @@ The backend should evaluate:
 - one-off availability exceptions
 
 If a product is unavailable, it should not appear in public kiosk responses unless a future admin/debug endpoint explicitly requests hidden data.
+
+A meal or large meal should not appear in public kiosk responses when any required meal group has no visible and available option after product and group-option availability is resolved.
 
 ## Response Design
 
@@ -197,8 +208,32 @@ Payment-related endpoints should:
 Admin write endpoints should:
 
 - validate role access
+- validate restaurant access
 - reject invalid status transitions
+- support super-admin-created invite links instead of emailed passwords
+- require mandatory two-factor authentication before issuing a full admin session
 - log important state changes later when audit logging is added
+
+### Admin Order Reads
+
+Admin order list responses should support:
+
+- pagination
+- restaurant filtering
+- order status filtering
+- payment status filtering
+- date range filtering
+- order-number or text search
+
+Admin order detail responses should include:
+
+- order id and order number
+- restaurant id and name
+- order status and payment status
+- subtotal and total amount
+- created and updated timestamps
+- payment provider, provider session id, provider payment intent id, amount, and currency
+- order item ids, product ids, menu product ids, product names, product types, unit prices, quantities, line totals, and configuration snapshots
 
 ## Error Handling
 

@@ -6,7 +6,7 @@ Restaurants need a kiosk ordering experience that helps customers find products 
 ## Goals
 - Allow users to search for products from the menu.
 - Allow users to browse menu categories to find products more easily.
-- Support one restaurant with multiple menus in the same system.
+- Support many restaurants, each with its own menus, catalog, orders, and admin access.
 - Allow categories to be shared across menus.
 - Allow products to be shared across menus and categories.
 - Allow menu-specific product pricing.
@@ -24,7 +24,6 @@ Restaurants need a kiosk ordering experience that helps customers find products 
 - Leave room for future upsell and AI-related features in a later phase.
 
 ## Non-Goals
-- Multi-restaurant management is out of scope for the MVP.
 - Real payment processing in production. Only test payment scenarios are in scope.
 - Loyalty systems are out of scope for the MVP.
 - Automated upsell recommendations are not part of the initial MVP and should be treated as Later.
