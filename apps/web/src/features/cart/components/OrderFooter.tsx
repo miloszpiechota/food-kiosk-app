@@ -32,7 +32,7 @@ export function OrderFooter({
       </div>
 
       <div className="ml-auto flex min-w-0 flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
-        <div className="footer-order-summary flex min-w-0 items-center gap-4 rounded-3xl border border-border bg-background/60 p-3 sm:w-[32rem]">
+        <div className="footer-order-summary flex min-w-0 items-center gap-4 rounded-3xl border border-border bg-background/60 p-3 sm:w-lg">
           <div
             className={`flex size-14 shrink-0 items-center justify-center rounded-2xl ${
               hasItems ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
@@ -98,3 +98,4 @@ export function OrderFooter({
     </BottomActionBar>
   );
 }
+

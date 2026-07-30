@@ -32,7 +32,6 @@ Define the user-visible and system-visible capabilities required for the MVP of 
 - `FR-021A`: The system shall support `SUPER_ADMIN` and `ADMIN` roles.
 - `FR-021B`: The system shall scope restaurant admin access to assigned restaurants.
 - `FR-021C`: The system shall support email and password login followed by mandatory two-factor verification.
-- `FR-021D`: The system may support QR-assisted admin login only through a secure trusted-device challenge flow.
 
 ## Admin Order Management
 - `FR-022`: The system shall allow an authenticated administrator to view incoming orders.

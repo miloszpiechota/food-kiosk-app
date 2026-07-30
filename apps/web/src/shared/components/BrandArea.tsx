@@ -19,7 +19,7 @@ export function BrandArea({
   } ${onClick ? focusRing : ""} ${className}`;
   const content = (
     <>
-      <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-secondary">
+      <div className="flex size-16 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-secondary">
         <UtensilsCrossed aria-hidden="true" className="size-8 text-white" />
       </div>
       <div className="text-left">
@@ -52,3 +52,4 @@ export function BrandArea({
     </div>
   );
 }
+

@@ -260,13 +260,13 @@ export function ProductDetailsPage({
           ) : (
             <>
               <section className="mx-4 mt-4 overflow-hidden rounded-3xl border border-border bg-card shadow-2xl shadow-black/20 sm:mx-6">
-                <div className="relative aspect-[16/9] min-h-72 bg-muted md:aspect-[16/7]">
+                <div className="relative aspect-video min-h-72 bg-muted md:aspect-16/7">
                   <img
                     src={displayedProduct.image}
                     alt={displayedProduct.name}
                     className="size-full object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-background/85 via-background/20 to-transparent" />
+                  <div className="absolute inset-0 bg-linear-to-t from-background/85 via-background/20 to-transparent" />
                 </div>
               </section>
 
@@ -495,7 +495,7 @@ function ProductDetailsSkeleton() {
           Preparing meal sizes, choices, and customization options.
         </p>
       </div>
-      <div className="aspect-[16/7] min-h-72 animate-pulse rounded-3xl bg-muted" />
+      <div className="aspect-16/7 min-h-72 animate-pulse rounded-3xl bg-muted" />
       <div className="h-10 w-2/3 animate-pulse rounded-2xl bg-muted" />
       <div className="h-5 w-full max-w-3xl animate-pulse rounded-xl bg-muted" />
       <div className="grid gap-3 sm:grid-cols-2">
@@ -592,7 +592,7 @@ function MealOptionCard({
           : "border-border bg-card"
       } ${focusRing}`}
     >
-      <div className="aspect-[4/3] overflow-hidden bg-muted">
+      <div className="aspect-4/3 overflow-hidden bg-muted">
         <img
           src={resolveOptionImage(option.imageUrl, fallbackImage)}
           alt={option.name}
@@ -784,7 +784,7 @@ function MealVariantCard({
           : "border-border bg-card"
       } ${focusRing}`}
     >
-      <div className="aspect-[4/3] overflow-hidden bg-muted">
+      <div className="aspect-4/3 overflow-hidden bg-muted">
         <img
           src={image}
           alt=""
@@ -795,7 +795,7 @@ function MealVariantCard({
       </div>
       <div className="p-4">
         <span
-          className={`mb-2 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.1em] ${
+          className={`mb-2 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-widest ${
             active
               ? "border-primary/60 bg-primary/20 text-primary"
               : "border-border bg-background/60 text-muted-foreground"
@@ -888,3 +888,4 @@ function toModifierSelections(quantities: ModifierQuantities) {
       quantity,
     }));
 }
+

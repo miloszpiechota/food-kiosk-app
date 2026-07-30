@@ -23,7 +23,7 @@ export function ProductCard({
   }
 
   return (
-    <article className="group relative flex h-full min-h-[25rem] flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-primary/10">
+    <article className="group relative flex h-full min-h-100 flex-col overflow-hidden rounded-3xl border border-border bg-card shadow-lg shadow-black/10 transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-primary/10">
       <button
         type="button"
         onClick={handlePress}
@@ -35,7 +35,7 @@ export function ProductCard({
         className={`absolute inset-0 z-10 rounded-3xl ${focusRing}`}
       />
 
-      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+      <div className="relative aspect-4/3 overflow-hidden bg-muted">
         <img
           src={product.image}
           alt={product.name}
@@ -78,3 +78,4 @@ export function ProductCard({
     </article>
   );
 }
+

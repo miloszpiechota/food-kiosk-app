@@ -211,7 +211,6 @@ Recommended Prisma enums:
 
 ### `AdminLoginChallengeType`
 - `TOTP`
-- `QR_LOGIN`
 
 ### `AvailabilityOverrideType`
 - `CLOSURE`
@@ -290,7 +289,7 @@ Additional models should include:
 
 - `AdminRestaurantAccess` for restaurant-scoped authorization
 - `AdminInvite` for super-admin-created invite links
-- `AdminLoginChallenge` for short-lived MFA and future QR-login challenges
+- `AdminLoginChallenge` for short-lived MFA challenges
 - `AdminSession` for revocable final sessions
 
 Security rules:
@@ -298,8 +297,7 @@ Security rules:
 - store invite tokens and session tokens as hashes
 - never email raw passwords
 - issue a final admin session only after password and TOTP verification
-- use QR codes for TOTP setup
-- treat QR-assisted login as a separate trusted-device challenge, not as normal Google Authenticator enrollment
+- use manual authenticator setup keys for TOTP setup in the current MVP
 
 ## Availability Modeling In Prisma
 

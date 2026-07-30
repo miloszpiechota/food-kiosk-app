@@ -10,8 +10,7 @@ Define the baseline security expectations for the Food Ordering Kiosk App MVP, w
 - `NFR-SEC-004`: Administrator sessions shall expire and shall not remain active indefinitely.
 - `NFR-SEC-005`: The system should provide visible logout behavior or timeout handling to reduce the risk of customer access to an admin session on shared kiosk-adjacent devices.
 - `NFR-SEC-005A`: Two-factor authentication should use a TOTP-compatible authenticator app such as Google Authenticator.
-- `NFR-SEC-005B`: QR codes may be used to enroll TOTP secrets during setup.
-- `NFR-SEC-005C`: QR-assisted login shall require a trusted-device or challenge-approval design and shall not grant access from scanning a public QR code alone.
+- `NFR-SEC-005B`: TOTP setup shall use a manual authenticator key in the current MVP.
 
 ## Admin Registration And Access Control
 - `NFR-SEC-006`: Administrator onboarding shall use super-admin-created invite links rather than public self-registration.
@@ -36,7 +35,7 @@ Define the baseline security expectations for the Food Ordering Kiosk App MVP, w
 - `NFR-SEC-017`: The system should support protection against repeated or abusive admin login attempts.
 - `NFR-SEC-018`: Suspicious authentication failures and important security-relevant events should be traceable in logs.
 - `NFR-SEC-019`: The system should reduce common and basic attack scenarios, including unauthorized admin access, insecure input handling, and unsafe payment state changes.
-- `NFR-SEC-019A`: Invite acceptance, login challenges, TOTP verification, and QR login challenges should expire quickly and be rate-limited.
+- `NFR-SEC-019A`: Invite acceptance, login challenges, and TOTP verification should expire quickly and be rate-limited.
 
 ## Validation
 - `NFR-SEC-020`: All backend input shall be validated before processing.

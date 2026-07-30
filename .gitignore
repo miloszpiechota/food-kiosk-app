@@ -25,6 +25,9 @@ lerna-debug.log*
 # Local app files
 *.local
 
+# Generated Figma design exports
+docs/Admin Panel UI Design/
+
 # Editor and OS files
 .vscode/*
 !.vscode/extensions.json

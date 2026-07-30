@@ -1,6 +1,15 @@
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import QRCode from "qrcode";
 import {
   AlertTriangle,
+  ArrowLeft,
   Building2,
   ChevronRight,
   CreditCard,
@@ -18,12 +27,37 @@ import {
   X,
 } from "lucide-react";
 import { focusRing } from "../../shared/components/IconButton";
+import {
+  bootstrapSuperAdmin,
+  cancelAdminBootstrapSetup,
+  confirmAdminInvite,
+  forgotAdminPassword,
+  getAdminBootstrapStatus,
+  inviteAdminUser,
+  listAdminMenuProducts,
+  listAdminRestaurants,
+  listAdminUsers,
+  loginAdmin,
+  logoutAdmin,
+  resetAdminPassword,
+  saveAdminMenuVisibility,
+  verifyBootstrapTwoFactor,
+  verifyAdminTwoFactor,
+  type AdminMenuProductSummary,
+  type AdminRestaurantSummary,
+  type AdminRole,
+  type AdminSessionUser,
+  type AdminUserSummary,
+  type AuthenticatedAdminResponse,
+  type InviteAdminUserResponse,
+} from "../../features/admin/api/adminApi";
 
 type AdminView = "login" | "shell";
-type LoginMode = "email" | "qr";
+type LoginMode = "email" | "setup" | "reset" | "invite";
 type LoginStep = "credentials" | "two-factor";
+type SetupStep = "account" | "two-factor";
 type ShellView = "orders" | "menu" | "admins" | "restaurants" | "settings";
-type Role = "SUPER_ADMIN" | "ADMIN";
+type Role = AdminRole;
 type OrderStatus = "NEW" | "IN_PROGRESS" | "READY" | "COMPLETED" | "CANCELLED";
 type PaymentStatus =
   | "PENDING"
@@ -83,12 +117,15 @@ interface MenuProduct {
   id: string;
   productId: string;
   restaurantId: string;
+  restaurantName: string;
   name: string;
   category: string;
   type: ProductType;
   priceCents: number;
+  currencyCode: string;
   visible: boolean;
   imageUrl: string;
+  forcedHiddenReason?: string | null;
   requiredGroup?: string;
   affectedMeals?: number;
 }
@@ -222,118 +259,6 @@ const orders: Order[] = [
   },
 ];
 
-const initialMenuProducts: MenuProduct[] = [
-  {
-    id: "mp_classic_burger_meal",
-    productId: "prod_classic_burger_meal",
-    restaurantId: "central",
-    name: "Classic Burger Meal",
-    category: "Meals",
-    type: "MEAL",
-    priceCents: 4550,
-    visible: true,
-    imageUrl:
-      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=96&h=96&fit=crop&auto=format",
-  },
-  {
-    id: "mp_small_fries",
-    productId: "prod_small_fries",
-    restaurantId: "central",
-    name: "Small Fries",
-    category: "Sides",
-    type: "ITEM",
-    priceCents: 900,
-    visible: true,
-    imageUrl:
-      "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=96&h=96&fit=crop&auto=format",
-    requiredGroup: "Side",
-    affectedMeals: 3,
-  },
-  {
-    id: "mp_cola",
-    productId: "prod_cola",
-    restaurantId: "central",
-    name: "Cola",
-    category: "Drinks",
-    type: "ITEM",
-    priceCents: 800,
-    visible: true,
-    imageUrl:
-      "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=96&h=96&fit=crop&auto=format",
-  },
-  {
-    id: "mp_large_burger_meal",
-    productId: "prod_large_burger_meal",
-    restaurantId: "riverside",
-    name: "Large Burger Meal",
-    category: "Meals",
-    type: "LARGE_MEAL",
-    priceCents: 6890,
-    visible: true,
-    imageUrl:
-      "https://images.unsplash.com/photo-1550547660-d9450f859349?w=96&h=96&fit=crop&auto=format",
-  },
-  {
-    id: "mp_large_fries",
-    productId: "prod_large_fries",
-    restaurantId: "riverside",
-    name: "Large Fries",
-    category: "Sides",
-    type: "ITEM",
-    priceCents: 1200,
-    visible: true,
-    imageUrl:
-      "https://images.unsplash.com/photo-1576107232684-1279f390859f?w=96&h=96&fit=crop&auto=format",
-    requiredGroup: "Side",
-    affectedMeals: 2,
-  },
-  {
-    id: "mp_chicken_wrap",
-    productId: "prod_chicken_wrap",
-    restaurantId: "airport",
-    name: "Chicken Wrap",
-    category: "Wraps",
-    type: "ITEM",
-    priceCents: 3200,
-    visible: false,
-    imageUrl:
-      "https://images.unsplash.com/photo-1626700051175-6818013e1d4f?w=96&h=96&fit=crop&auto=format",
-  },
-];
-
-const adminUsers: AdminUser[] = [
-  {
-    id: "admin_001",
-    email: "owner@kiosk-platform.dev",
-    name: "Milosz Owner",
-    role: "SUPER_ADMIN",
-    restaurants: ["All restaurants"],
-    twoFactorEnabled: true,
-    status: "active",
-    lastLoginAt: "2026-07-27T09:30:00.000Z",
-  },
-  {
-    id: "admin_002",
-    email: "manager@central.example",
-    name: "Central Manager",
-    role: "ADMIN",
-    restaurants: ["Central Burger House"],
-    twoFactorEnabled: true,
-    status: "active",
-    lastLoginAt: "2026-07-26T18:20:00.000Z",
-  },
-  {
-    id: "admin_003",
-    email: "worker@riverside.example",
-    name: "Riverside Worker",
-    role: "ADMIN",
-    restaurants: ["Riverside Kiosk"],
-    twoFactorEnabled: false,
-    status: "pending",
-    lastLoginAt: "Never",
-  },
-];
-
 const orderStatusLabels: Record<OrderStatus, string> = {
   NEW: "New",
   IN_PROGRESS: "In progress",
@@ -370,17 +295,87 @@ function restaurantName(restaurantId: string): string {
   );
 }
 
+function mapAdminUser(user: AdminUserSummary): AdminUser {
+  return {
+    id: user.id,
+    email: user.email,
+    name: user.email.split("@")[0] || "Admin user",
+    role: user.role,
+    restaurants:
+      user.role === "SUPER_ADMIN" && user.restaurants.length === 0
+        ? ["All restaurants"]
+        : user.restaurants.map((restaurant) => restaurant.name),
+    twoFactorEnabled: user.twoFactorEnabled,
+    status: user.isActive ? "active" : "pending",
+    lastLoginAt: user.lastLoginAt ?? "Never",
+  };
+}
+
+function mapAdminMenuProduct(product: AdminMenuProductSummary): MenuProduct {
+  return {
+    id: product.menuProductId,
+    productId: product.productId,
+    restaurantId: product.restaurantId,
+    restaurantName: product.restaurantName,
+    name: product.name,
+    category: product.categoryName,
+    type: product.type,
+    priceCents: toCents(product.price),
+    currencyCode: product.currencyCode,
+    visible: product.isVisible,
+    imageUrl:
+      product.imageUrl ??
+      "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
+    forcedHiddenReason: product.forcedHiddenReason,
+  };
+}
+
+function toCents(value: string): number {
+  return Math.round(Number(value) * 100);
+}
+
+function validateAdminEmailDomain(value: string): void {
+  const domain = value.trim().split("@")[1] ?? "";
+  const labels = domain.split(".");
+  const topLevelDomain = labels.at(-1) ?? "";
+  const hasCompleteDomain =
+    labels.length >= 2 &&
+    labels.every((label) => label.length > 0) &&
+    /^[a-z]{2,63}$/i.test(topLevelDomain);
+
+  if (!hasCompleteDomain) {
+    throw new Error("Enter an email with a complete domain, for example owner@example.com.");
+  }
+}
+
 export function AdminPanelPage({ onBackToKiosk }: AdminPanelPageProps) {
   const [view, setView] = useState<AdminView>("login");
-  const [role] = useState<Role>("SUPER_ADMIN");
+  const [sessionToken, setSessionToken] = useState("");
+  const [adminUser, setAdminUser] = useState<AdminSessionUser | null>(null);
 
-  if (view === "shell") {
+  function handleSignedIn(response: AuthenticatedAdminResponse) {
+    setSessionToken(response.sessionToken);
+    setAdminUser(response.user);
+    setView("shell");
+  }
+
+  async function handleLogout() {
+    if (sessionToken) {
+      await logoutAdmin(sessionToken).catch(() => undefined);
+    }
+    setSessionToken("");
+    setAdminUser(null);
+    setView("login");
+  }
+
+  if (view === "shell" && adminUser) {
     return (
       <AdminFrame>
         <AdminShell
-          role={role}
+          sessionToken={sessionToken}
+          user={adminUser}
           onBackToKiosk={onBackToKiosk}
-          onLogout={() => setView("login")}
+          onLogout={handleLogout}
         />
       </AdminFrame>
     );
@@ -390,7 +385,7 @@ export function AdminPanelPage({ onBackToKiosk }: AdminPanelPageProps) {
     <AdminFrame>
       <AdminLogin
         onBackToKiosk={onBackToKiosk}
-        onSignedIn={() => setView("shell")}
+        onSignedIn={handleSignedIn}
       />
     </AdminFrame>
   );
@@ -406,51 +401,296 @@ function AdminFrame({ children }: { children: ReactNode }) {
 
 interface AdminLoginProps {
   onBackToKiosk: () => void;
-  onSignedIn: () => void;
+  onSignedIn: (response: AuthenticatedAdminResponse) => void;
 }
 
 function AdminLogin({
   onBackToKiosk,
   onSignedIn,
 }: AdminLoginProps) {
-  const [mode, setMode] = useState<LoginMode>("email");
-  const [step, setStep] = useState<LoginStep>("credentials");
-  const [qrState, setQrState] = useState<"waiting" | "approved" | "expired">(
-    "waiting",
+  const urlSearchParams = useMemo(
+    () => new URLSearchParams(window.location.search),
+    [],
   );
+  const initialInviteToken = urlSearchParams.get("inviteToken") ?? "";
+  const initialResetToken = urlSearchParams.get("resetToken") ?? "";
+  const [mode, setMode] = useState<LoginMode>(
+    initialResetToken ? "reset" : initialInviteToken ? "invite" : "email",
+  );
+  const [step, setStep] = useState<LoginStep>("credentials");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [challengeToken, setChallengeToken] = useState("");
+  const [canBootstrap, setCanBootstrap] = useState(false);
+  const [setupStep, setSetupStep] = useState<SetupStep>("account");
+  const [setupEmail, setSetupEmail] = useState("");
+  const [setupPassword, setSetupPassword] = useState("");
+  const [setupPasswordRepeat, setSetupPasswordRepeat] = useState("");
+  const [bootstrapToken, setBootstrapToken] = useState("");
+  const [setupSecret, setSetupSecret] = useState("");
+  const [setupToken, setSetupToken] = useState("");
+  const [setupProvisioningUri, setSetupProvisioningUri] = useState("");
+  const [setupQrCodeUrl, setSetupQrCodeUrl] = useState("");
+  const [setupCode, setSetupCode] = useState("");
+  const inviteToken = initialInviteToken;
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetToken, setResetToken] = useState(initialResetToken);
+  const [resetPassword, setResetPassword] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function handleCredentials(event: FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    let isCurrent = true;
+
+    void Promise.resolve()
+      .then(getAdminBootstrapStatus)
+      .then((response) => {
+        if (!isCurrent) {
+          return;
+        }
+
+        setCanBootstrap(response.canBootstrap);
+        if (response.canBootstrap && !initialInviteToken && !initialResetToken) {
+          setMode("setup");
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [initialInviteToken, initialResetToken]);
+
+  useEffect(() => {
+    if (!setupProvisioningUri) {
+      return undefined;
+    }
+
+    let isCurrent = true;
+
+    void Promise.resolve()
+      .then(() =>
+        QRCode.toDataURL(setupProvisioningUri, {
+          margin: 2,
+          scale: 6,
+          color: {
+            dark: "#0c0f1a",
+            light: "#ffffff",
+          },
+        }),
+      )
+      .then((qrCodeUrl) => {
+        if (isCurrent) {
+          setSetupQrCodeUrl(qrCodeUrl);
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setSetupQrCodeUrl("");
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [setupProvisioningUri]);
+
+  useEffect(() => {
+    if (!setupToken || setupStep !== "two-factor") {
+      return undefined;
+    }
+
+    function cancelOnPageLeave() {
+      void cancelAdminBootstrapSetup(setupToken, { keepalive: true }).catch(
+        () => undefined,
+      );
+    }
+
+    window.addEventListener("pagehide", cancelOnPageLeave);
+
+    return () => {
+      window.removeEventListener("pagehide", cancelOnPageLeave);
+    };
+  }, [setupStep, setupToken]);
+
+  async function handleCredentials(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setStep("two-factor");
+    await runAdminAction(async () => {
+      validateAdminEmailDomain(email);
+      const response = await loginAdmin({ email, password });
+      if (response.status === "MFA_REQUIRED") {
+        setChallengeToken(response.challengeToken);
+        setStep("two-factor");
+        setStatusMessage("Password accepted. Enter your 2FA code.");
+        return;
+      }
+
+      onSignedIn(response);
+    });
   }
 
-  function handleTwoFactor(event: FormEvent<HTMLFormElement>) {
+  async function handleTwoFactor(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onSignedIn();
+    await runAdminAction(async () => {
+      const response = await verifyAdminTwoFactor({
+        challengeToken,
+        code,
+      });
+      onSignedIn(response);
+    });
+  }
+
+  async function handleBootstrap(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAdminAction(async () => {
+      validateAdminEmailDomain(setupEmail);
+      if (setupPassword !== setupPasswordRepeat) {
+        throw new Error("Passwords must match.");
+      }
+      const response = await bootstrapSuperAdmin({
+        email: setupEmail,
+        password: setupPassword,
+        bootstrapToken: bootstrapToken || undefined,
+      });
+      setSetupSecret(response.twoFactorSetup.manualEntryKey);
+      setSetupToken(response.setupToken);
+      setSetupProvisioningUri(response.twoFactorSetup.provisioningUri);
+      setSetupQrCodeUrl("");
+      setSetupCode("");
+      setSetupStep("two-factor");
+      setStatusMessage(
+        "Super admin account created. Scan the QR code in your authenticator app.",
+      );
+    });
+  }
+
+  async function handleBootstrapTwoFactor(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAdminAction(async () => {
+      const response = await verifyBootstrapTwoFactor({
+        setupToken,
+        code: setupCode,
+      });
+      onSignedIn(response);
+    });
+  }
+
+  async function handleCancelBootstrapSetup() {
+    await runAdminAction(async () => {
+      if (setupToken) {
+        await cancelAdminBootstrapSetup(setupToken);
+      }
+      resetBootstrapSetup();
+      setCanBootstrap(true);
+      setStatusMessage("Super admin setup canceled. Start again when ready.");
+    });
+  }
+
+  async function handleConfirmInvite(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAdminAction(async () => {
+      await confirmAdminInvite(inviteToken);
+      setStatusMessage("Invite confirmed. You can now sign in with 2FA.");
+      setMode("email");
+    });
+  }
+
+  async function handleForgotPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAdminAction(async () => {
+      validateAdminEmailDomain(resetEmail);
+      const response = await forgotAdminPassword(resetEmail);
+      if (response.delivery.previewToken) {
+        setResetToken(response.delivery.previewToken);
+      }
+      setStatusMessage(
+        "If this email exists, a password reset message has been sent.",
+      );
+    });
+  }
+
+  async function handleResetPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAdminAction(async () => {
+      await resetAdminPassword({
+        resetToken,
+        password: resetPassword,
+      });
+      setStatusMessage("Password reset. Sign in with the new password.");
+      setMode("email");
+    });
+  }
+
+  async function runAdminAction(action: () => Promise<void>) {
+    setBusy(true);
+    setErrorMessage("");
+    setStatusMessage("");
+    try {
+      await action();
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Admin request failed.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function returnToCredentials() {
+    setStep("credentials");
+    setCode("");
+    setChallengeToken("");
+    setStatusMessage("");
+    setErrorMessage("");
+  }
+
+  function openPasswordReset() {
+    setMode("reset");
+    setStep("credentials");
+    setResetEmail(email);
+    setStatusMessage("");
+    setErrorMessage("");
+  }
+
+  function resetBootstrapSetup() {
+    setSetupStep("account");
+    setSetupEmail("");
+    setSetupPassword("");
+    setSetupPasswordRepeat("");
+    setBootstrapToken("");
+    setSetupSecret("");
+    setSetupToken("");
+    setSetupProvisioningUri("");
+    setSetupQrCodeUrl("");
+    setSetupCode("");
   }
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-10">
-      <button
-        type="button"
-        onClick={onBackToKiosk}
-        className={`absolute left-6 top-6 rounded-md border border-[var(--admin-border)] bg-[#111828] px-3 py-2 text-xs font-semibold text-[#9aaabb] transition hover:text-[#dde2ee] ${focusRing}`}
-      >
-        Back to kiosk
-      </button>
-
-      <section className="grid w-full max-w-5xl overflow-hidden rounded-lg border border-[var(--admin-border)] bg-[#111828] shadow-2xl shadow-black/40 lg:grid-cols-[0.95fr_1.05fr]">
-        <div className="border-b border-[var(--admin-border)] bg-[#090d16] p-8 lg:border-b-0 lg:border-r">
-          <div className="mb-10 flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-md bg-[#4f7ef7]">
-              <Utensils aria-hidden="true" className="size-5 text-white" />
+      <section className="grid w-full max-w-5xl overflow-hidden rounded-lg border border-(--admin-border) bg-[#111828] shadow-2xl shadow-black/40 lg:grid-cols-[0.95fr_1.05fr]">
+        <div className="border-b border-(--admin-border) bg-[#090d16] p-8 lg:border-b-0 lg:border-r">
+          <div className="mb-10 flex items-center justify-between gap-4">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-[#4f7ef7]">
+                <Utensils aria-hidden="true" className="size-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold">KioskPlatform</p>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-[#6b7694]">
+                  Admin Console
+                </p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-semibold">KioskPlatform</p>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-[#6b7694]">
-                Admin Console
-              </p>
-            </div>
+            <button
+              type="button"
+              onClick={onBackToKiosk}
+              className={`inline-flex min-h-10 shrink-0 items-center gap-2 rounded-md border border-(--admin-border) bg-[#111828] px-3 text-xs font-semibold text-[#dde2ee] transition hover:bg-[#182030] hover:text-white ${focusRing}`}
+            >
+              <ArrowLeft className="size-4" aria-hidden="true" />
+              Back to the kiosk
+            </button>
           </div>
 
           <div className="space-y-4">
@@ -461,8 +701,8 @@ function AdminLogin({
               Manage restaurants, orders, payments, and menu visibility.
             </h1>
             <p className="max-w-sm text-sm leading-6 text-[#9aaabb]">
-              Frontend-only admin slice using the Figma panel style. Backend
-              authentication and authorization endpoints are planned next.
+              Backend-backed admin auth for email, password, required 2FA,
+              first super-admin setup, invites, and password reset.
             </p>
           </div>
 
@@ -480,30 +720,10 @@ function AdminLogin({
         </div>
 
         <div className="p-8">
-          <div className="mb-6 grid grid-cols-2 rounded-md border border-[var(--admin-border)] bg-[#182030] p-1">
-            <button
-              type="button"
-              onClick={() => setMode("email")}
-              className={`rounded px-3 py-2 text-xs font-semibold transition ${
-                mode === "email"
-                  ? "bg-[#4f7ef7] text-white"
-                  : "text-[#9aaabb] hover:text-white"
-              }`}
-            >
-              Email + 2FA
-            </button>
-            <button
-              type="button"
-              onClick={() => setMode("qr")}
-              className={`rounded px-3 py-2 text-xs font-semibold transition ${
-                mode === "qr"
-                  ? "bg-[#4f7ef7] text-white"
-                  : "text-[#9aaabb] hover:text-white"
-              }`}
-            >
-              QR login
-            </button>
-          </div>
+          {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
+          {statusMessage ? (
+            <AdminAlert tone="success">{statusMessage}</AdminAlert>
+          ) : null}
 
           {mode === "email" && step === "credentials" ? (
             <form onSubmit={handleCredentials} className="space-y-5">
@@ -513,27 +733,43 @@ function AdminLogin({
               />
               <AdminField label="Email" icon={<User className="size-4" />}>
                 <input
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
                   type="email"
                   autoComplete="username"
-                  placeholder="owner@kiosk-platform.dev"
+                  required
+                  placeholder="owner@example.com"
                   className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
                 />
               </AdminField>
               <AdminField label="Password" icon={<Shield className="size-4" />}>
                 <input
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
                   type="password"
                   autoComplete="current-password"
+                  required
                   placeholder="Password"
                   className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
                 />
               </AdminField>
+              <div className="-mt-2 flex justify-end">
+                <button
+                  type="button"
+                  onClick={openPasswordReset}
+                  className={`rounded px-1 py-1 text-xs font-semibold text-[#8fb0ff] transition hover:text-white ${focusRing}`}
+                >
+                  Forgot password?
+                </button>
+              </div>
               <button
                 type="submit"
+                disabled={busy}
                 className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
               >
-                Continue
+                {busy ? "Checking..." : "Continue"}
               </button>
-              <p className="rounded-md border border-[var(--admin-border)] bg-[#0c0f1a] px-3 py-2 text-xs leading-5 text-[#9aaabb]">
+              <p className="rounded-md border border-(--admin-border) bg-[#0c0f1a] px-3 py-2 text-xs leading-5 text-[#9aaabb]">
                 New admin users must be invited by a super admin. Invite
                 acceptance is not available from the public login panel.
               </p>
@@ -546,75 +782,257 @@ function AdminLogin({
                 title="Two-factor verification"
                 text="Enter the six-digit code from your authenticator app."
               />
-              <div className="grid grid-cols-6 gap-2">
-                {Array.from({ length: 6 }, (_, index) => (
-                  <input
-                    key={index}
-                    inputMode="numeric"
-                    maxLength={1}
-                    className="h-12 rounded-md border border-[var(--admin-border)] bg-[#182030] text-center text-lg font-semibold outline-none focus:border-[#4f7ef7]"
-                    aria-label={`2FA digit ${index + 1}`}
-                  />
-                ))}
-              </div>
+              <AdminField label="2FA code" icon={<Shield className="size-4" />}>
+                <input
+                  value={code}
+                  onChange={(event) =>
+                    setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                  }
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  pattern="\d{6}"
+                  required
+                  placeholder="123456"
+                  className="w-full bg-transparent text-sm font-semibold tracking-widest outline-none placeholder:text-[#6b7694]"
+                  aria-label="Six-digit two-factor authentication code"
+                />
+              </AdminField>
               <button
                 type="submit"
+                disabled={busy || code.length !== 6}
                 className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
               >
-                Verify and open admin panel
+                {busy ? "Verifying..." : "Verify and open admin panel"}
               </button>
+              <SecondaryButton onClick={returnToCredentials}>
+                Back to email and password
+              </SecondaryButton>
             </form>
           ) : null}
 
-          {mode === "qr" ? (
+          {mode === "setup" && (canBootstrap || setupSecret) ? (
             <div className="space-y-5">
-              <PanelHeading
-                title="QR-assisted login"
-                text="Scan with a trusted admin device. This is a frontend placeholder for the future challenge flow."
-              />
-              <div className="flex justify-center rounded-lg border border-[var(--admin-border)] bg-[#182030] p-6">
-                <MockQr />
-              </div>
-              <div className="flex items-center justify-between rounded-md border border-[var(--admin-border)] bg-[#0c0f1a] px-3 py-2 text-xs text-[#9aaabb]">
-                <span>
-                  {qrState === "waiting"
-                    ? "Waiting for trusted device approval"
-                    : qrState === "approved"
-                      ? "Challenge approved"
-                      : "Challenge expired"}
-                </span>
-                <span>01:42</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                {(["waiting", "approved", "expired"] as const).map((state) => (
-                  <button
-                    key={state}
-                    type="button"
-                    onClick={() => setQrState(state)}
-                    className={`rounded-md border border-[var(--admin-border)] px-3 py-2 text-xs font-semibold ${
-                      qrState === state
-                        ? "bg-[#1e2840] text-white"
-                        : "text-[#9aaabb]"
-                    }`}
+              {setupStep === "account" ? (
+                <>
+                  <PanelHeading
+                    title="Create first super admin"
+                    text="Use this only on a fresh database before any admin users exist."
+                  />
+                  <form onSubmit={handleBootstrap} className="space-y-4">
+                    <AdminField label="Email" icon={<User className="size-4" />}>
+                      <input
+                        value={setupEmail}
+                        onChange={(event) => setSetupEmail(event.target.value)}
+                        type="email"
+                        required
+                        placeholder="owner@example.com"
+                        className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                      />
+                    </AdminField>
+                    <AdminField label="Password" icon={<Shield className="size-4" />}>
+                      <input
+                        value={setupPassword}
+                        onChange={(event) => setSetupPassword(event.target.value)}
+                        type="password"
+                        required
+                        minLength={12}
+                        placeholder="At least 12 characters"
+                        className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                      />
+                    </AdminField>
+                    <AdminField
+                      label="Repeat password"
+                      icon={<Shield className="size-4" />}
+                    >
+                      <input
+                        value={setupPasswordRepeat}
+                        onChange={(event) =>
+                          setSetupPasswordRepeat(event.target.value)
+                        }
+                        type="password"
+                        required
+                        minLength={12}
+                        placeholder="Repeat password"
+                        className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                      />
+                    </AdminField>
+                    <AdminField
+                      label="Bootstrap token"
+                      icon={<Shield className="size-4" />}
+                    >
+                      <input
+                        value={bootstrapToken}
+                        onChange={(event) => setBootstrapToken(event.target.value)}
+                        type="password"
+                        placeholder="Optional, only if ADMIN_BOOTSTRAP_TOKEN is set"
+                        className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                      />
+                    </AdminField>
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+                    >
+                      {busy ? "Creating..." : "Create super admin"}
+                    </button>
+                  </form>
+                </>
+              ) : null}
+
+              {setupStep === "two-factor" ? (
+                <form onSubmit={handleBootstrapTwoFactor} className="space-y-5">
+                  <PanelHeading
+                    title="Set up 2FA"
+                    text="Scan the QR code in your authenticator app, then enter the six-digit code from that app."
+                  />
+                  <div className="grid gap-4 rounded-md border border-(--admin-border) bg-[#0c0f1a] p-4 sm:grid-cols-[160px_1fr]">
+                    <div className="flex size-40 items-center justify-center rounded-md bg-white p-2">
+                      {setupQrCodeUrl ? (
+                        <img
+                          src={setupQrCodeUrl}
+                          alt="QR code for Google Authenticator setup"
+                          className="size-full"
+                        />
+                      ) : (
+                        <Loader2
+                          aria-hidden="true"
+                          className="size-6 animate-spin text-[#4f7ef7]"
+                        />
+                      )}
+                    </div>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs font-semibold text-white">
+                          Scan with Google Authenticator
+                        </p>
+                        <p className="mt-1 text-xs leading-5 text-[#9aaabb]">
+                          If scanning is not available, add the account manually
+                          with the key below.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                  <AdminReadonly
+                    label="Manual setup key"
+                    value={setupSecret}
+                  />
+                  <AdminField
+                    label="Enter the 6-digit 2FA code from your authenticator app"
+                    icon={<Shield className="size-4" />}
                   >
-                    {state}
+                    <input
+                      value={setupCode}
+                      onChange={(event) =>
+                        setSetupCode(
+                          event.target.value.replace(/\D/g, "").slice(0, 6),
+                        )
+                      }
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="\d{6}"
+                      required
+                      placeholder="123456"
+                      className="w-full bg-transparent text-sm font-semibold tracking-widest outline-none placeholder:text-[#6b7694]"
+                      aria-label="Six-digit setup two-factor authentication code"
+                    />
+                  </AdminField>
+                  <button
+                    type="submit"
+                    disabled={busy || setupCode.length !== 6 || !setupToken}
+                    className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+                  >
+                    {busy ? "Verifying..." : "Verify 2FA and finish setup"}
                   </button>
-                ))}
-              </div>
-              <button
-                type="button"
-                onClick={onSignedIn}
-                disabled={qrState !== "approved"}
-                className={`min-h-11 w-full rounded-md px-4 text-sm font-semibold transition ${
-                  qrState === "approved"
-                    ? "bg-[#4f7ef7] text-white hover:bg-[#416de0]"
-                    : "cursor-not-allowed bg-[#182030] text-[#6b7694]"
-                } ${focusRing}`}
-              >
-                Open admin panel
-              </button>
+                  <SecondaryButton onClick={handleCancelBootstrapSetup}>
+                    Cancel setup and start again
+                  </SecondaryButton>
+                </form>
+              ) : null}
             </div>
           ) : null}
+
+          {mode === "invite" ? (
+            <div className="space-y-5">
+              <PanelHeading
+                title="Accept admin invite"
+                text="Confirm the invite from your email before signing in with your admin credentials."
+              />
+              <form onSubmit={handleConfirmInvite} className="space-y-4">
+                <AdminReadonly label="Invite token from URL" value={inviteToken} />
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+                >
+                  {busy ? "Confirming..." : "Confirm invite"}
+                </button>
+                <SecondaryButton onClick={() => setMode("email")}>
+                  Back to sign in
+                </SecondaryButton>
+              </form>
+            </div>
+          ) : null}
+
+          {mode === "reset" ? (
+            <div className="space-y-5">
+              <PanelHeading
+                title="Password reset"
+                text="Request a reset email, then set a new password with the token."
+              />
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <AdminField label="Email" icon={<User className="size-4" />}>
+                  <input
+                    value={resetEmail}
+                    onChange={(event) => setResetEmail(event.target.value)}
+                    type="email"
+                    required
+                    placeholder="admin@example.com"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                  />
+                </AdminField>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+                >
+                  Send reset email
+                </button>
+              </form>
+              <form onSubmit={handleResetPassword} className="space-y-4">
+                <AdminField label="Reset token" icon={<Shield className="size-4" />}>
+                  <input
+                    value={resetToken}
+                    onChange={(event) => setResetToken(event.target.value)}
+                    required
+                    placeholder="Paste reset token"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                  />
+                </AdminField>
+                <AdminField label="New password" icon={<Shield className="size-4" />}>
+                  <input
+                    value={resetPassword}
+                    onChange={(event) => setResetPassword(event.target.value)}
+                    type="password"
+                    required
+                    minLength={12}
+                    placeholder="At least 12 characters"
+                    className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                  />
+                </AdminField>
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className={`min-h-11 w-full rounded-md border border-(--admin-border) px-4 text-sm font-semibold text-[#dde2ee] transition hover:bg-[#182030] ${focusRing}`}
+                >
+                  Reset password
+                </button>
+              </form>
+              <SecondaryButton onClick={() => setMode("email")}>
+                Back to sign in
+              </SecondaryButton>
+            </div>
+          ) : null}
+
         </div>
       </section>
     </main>
@@ -622,20 +1040,44 @@ function AdminLogin({
 }
 
 interface AdminShellProps {
-  role: Role;
+  sessionToken: string;
+  user: AdminSessionUser;
   onBackToKiosk: () => void;
   onLogout: () => void;
 }
 
-function AdminShell({ role, onBackToKiosk, onLogout }: AdminShellProps) {
+function AdminShell({
+  sessionToken,
+  user,
+  onBackToKiosk,
+  onLogout,
+}: AdminShellProps) {
   const [view, setView] = useState<ShellView>("orders");
   const [restaurantId, setRestaurantId] = useState("");
   const [globalSearch, setGlobalSearch] = useState("");
+  const [shellRestaurants, setShellRestaurants] = useState<
+    AdminRestaurantSummary[]
+  >([]);
+  const role = user.role;
+  const restaurantOptions =
+    shellRestaurants.length > 0
+      ? shellRestaurants.map((restaurant) => ({
+          id: restaurant.id,
+          name: restaurant.name,
+        }))
+      : restaurants;
+
+  useEffect(() => {
+    void Promise.resolve().then(async () => {
+      const response = await listAdminRestaurants(sessionToken);
+      setShellRestaurants(response.restaurants);
+    });
+  }, [sessionToken]);
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <aside className="flex w-56 shrink-0 flex-col border-r border-[var(--admin-border)] bg-[#090d16]">
-        <div className="border-b border-[var(--admin-border)] px-4 py-4">
+      <aside className="flex w-56 shrink-0 flex-col border-r border-(--admin-border) bg-[#090d16]">
+        <div className="border-b border-(--admin-border) px-4 py-4">
           <div className="flex items-center gap-2">
             <div className="flex size-7 items-center justify-center rounded bg-[#4f7ef7]">
               <Utensils className="size-4 text-white" />
@@ -686,11 +1128,11 @@ function AdminShell({ role, onBackToKiosk, onLogout }: AdminShellProps) {
           />
         </nav>
 
-        <div className="border-t border-[var(--admin-border)] p-3">
+        <div className="border-t border-(--admin-border) p-3">
           <button
             type="button"
             onClick={onBackToKiosk}
-            className="w-full rounded-md border border-[var(--admin-border)] px-3 py-2 text-left text-xs font-semibold text-[#9aaabb] transition hover:text-white"
+            className="w-full rounded-md border border-(--admin-border) px-3 py-2 text-left text-xs font-semibold text-[#9aaabb] transition hover:text-white"
           >
             Back to kiosk
           </button>
@@ -698,15 +1140,15 @@ function AdminShell({ role, onBackToKiosk, onLogout }: AdminShellProps) {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-[var(--admin-border)] bg-[#111828] px-4">
+        <header className="flex h-12 shrink-0 items-center gap-3 border-b border-(--admin-border) bg-[#111828] px-4">
           <select
             value={restaurantId}
             onChange={(event) => setRestaurantId(event.target.value)}
-            className="h-8 rounded border border-[var(--admin-border)] bg-[#182030] px-2 text-xs font-semibold text-[#dde2ee] outline-none"
+            className="h-8 rounded border border-(--admin-border) bg-[#182030] px-2 text-xs font-semibold text-[#dde2ee] outline-none"
             aria-label="Restaurant filter"
           >
             <option value="">All restaurants</option>
-            {restaurants.map((restaurant) => (
+            {restaurantOptions.map((restaurant) => (
               <option key={restaurant.id} value={restaurant.id}>
                 {restaurant.name}
               </option>
@@ -719,7 +1161,7 @@ function AdminShell({ role, onBackToKiosk, onLogout }: AdminShellProps) {
               value={globalSearch}
               onChange={(event) => setGlobalSearch(event.target.value)}
               placeholder="Search orders, menu items..."
-              className="h-8 w-full rounded border border-[var(--admin-border)] bg-[#182030] pl-8 pr-3 text-xs outline-none placeholder:text-[#6b7694] focus:border-[#4f7ef7]"
+              className="h-8 w-full rounded border border-(--admin-border) bg-[#182030] pl-8 pr-3 text-xs outline-none placeholder:text-[#6b7694] focus:border-[#4f7ef7]"
             />
           </div>
 
@@ -732,7 +1174,7 @@ function AdminShell({ role, onBackToKiosk, onLogout }: AdminShellProps) {
                 <User className="size-4" />
               </span>
               <span className="hidden font-semibold sm:inline">
-                Milosz Owner
+                {user.email}
               </span>
             </div>
             <button
@@ -755,11 +1197,15 @@ function AdminShell({ role, onBackToKiosk, onLogout }: AdminShellProps) {
           ) : null}
           {view === "menu" ? (
             <MenuItemsView
+              sessionToken={sessionToken}
+              restaurants={shellRestaurants}
               restaurantId={restaurantId}
               globalSearch={globalSearch}
             />
           ) : null}
-          {view === "admins" ? <AdminUsersView /> : null}
+          {view === "admins" ? (
+            <AdminUsersView sessionToken={sessionToken} />
+          ) : null}
           {view === "restaurants" ? <RestaurantsView /> : null}
           {view === "settings" ? <SettingsView /> : null}
         </section>
@@ -809,7 +1255,7 @@ function OrdersView({
         }
       />
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--admin-border)] bg-[#182030]/35 px-5 py-3">
+      <div className="flex flex-wrap items-center gap-2 border-b border-(--admin-border) bg-[#182030]/35 px-5 py-3">
         <SlidersHorizontal className="size-4 text-[#6b7694]" />
         <AdminSelect value={orderStatus} onChange={setOrderStatus}>
           <option value="">Any order status</option>
@@ -828,11 +1274,11 @@ function OrdersView({
           ))}
         </AdminSelect>
         <input
-          className="h-8 w-28 rounded border border-[var(--admin-border)] bg-[#182030] px-2 text-xs outline-none placeholder:text-[#6b7694]"
+          className="h-8 w-28 rounded border border-(--admin-border) bg-[#182030] px-2 text-xs outline-none placeholder:text-[#6b7694]"
           placeholder="From"
         />
         <input
-          className="h-8 w-28 rounded border border-[var(--admin-border)] bg-[#182030] px-2 text-xs outline-none placeholder:text-[#6b7694]"
+          className="h-8 w-28 rounded border border-(--admin-border) bg-[#182030] px-2 text-xs outline-none placeholder:text-[#6b7694]"
           placeholder="To"
         />
         {(orderStatus || paymentStatus) && (
@@ -867,7 +1313,7 @@ function OrdersView({
             <tr
               key={order.id}
               onClick={() => setSelectedOrder(order)}
-              className="cursor-pointer border-b border-[var(--admin-border)] transition hover:bg-[#1e2840]"
+              className="cursor-pointer border-b border-(--admin-border) transition hover:bg-[#1e2840]"
             >
               <Cell mono>{order.orderNumber}</Cell>
               <Cell>{restaurantName(order.restaurantId)}</Cell>
@@ -958,7 +1404,7 @@ function OrderDetailModal({
               ]}
             >
               {order.items.map((item) => (
-                <tr key={item.id} className="border-b border-[var(--admin-border)]">
+                <tr key={item.id} className="border-b border-(--admin-border)">
                   <Cell mono muted>{item.id}</Cell>
                   <Cell mono muted>{item.productId}</Cell>
                   <Cell mono muted>{item.menuProductId}</Cell>
@@ -981,25 +1427,81 @@ function OrderDetailModal({
 }
 
 function MenuItemsView({
+  sessionToken,
+  restaurants,
   restaurantId,
   globalSearch,
 }: {
+  sessionToken: string;
+  restaurants: AdminRestaurantSummary[];
   restaurantId: string;
   globalSearch: string;
 }) {
-  const [products, setProducts] = useState(initialMenuProducts);
+  const [products, setProducts] = useState<MenuProduct[]>([]);
+  const [savedProducts, setSavedProducts] = useState<MenuProduct[]>([]);
   const [visibility, setVisibility] = useState("");
   const [type, setType] = useState("");
+  const [tableState, setTableState] = useState<TableState>("loading");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [saving, setSaving] = useState(false);
   const [warningProduct, setWarningProduct] = useState<MenuProduct | null>(null);
+  const savedVisibilityById = useMemo(
+    () => new Map(savedProducts.map((product) => [product.id, product.visible])),
+    [savedProducts],
+  );
+  const dirtyProductIds = useMemo(
+    () =>
+      new Set(
+        products
+          .filter((product) => {
+            const savedVisibility = savedVisibilityById.get(product.id);
+
+            return (
+              savedVisibility !== undefined &&
+              savedVisibility !== product.visible
+            );
+          })
+          .map((product) => product.id),
+      ),
+    [products, savedVisibilityById],
+  );
+  const dirtyChanges = products.filter((product) =>
+    dirtyProductIds.has(product.id),
+  );
+
+  const loadProducts = useCallback(async () => {
+    setTableState("loading");
+    setErrorMessage("");
+    try {
+      const response = await listAdminMenuProducts(sessionToken);
+      const nextProducts = response.products.map(mapAdminMenuProduct);
+      setProducts(nextProducts);
+      setSavedProducts(nextProducts);
+      setTableState(nextProducts.length > 0 ? "ready" : "empty");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not load menu items.",
+      );
+      setTableState("error");
+    }
+  }, [sessionToken]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadProducts);
+  }, [loadProducts]);
 
   const filtered = products.filter((product) => {
+    const q = globalSearch.toLowerCase();
+    const isDirty = dirtyProductIds.has(product.id);
     if (restaurantId && product.restaurantId !== restaurantId) return false;
-    if (visibility === "visible" && !product.visible) return false;
-    if (visibility === "hidden" && product.visible) return false;
+    if (visibility === "visible" && !product.visible && !isDirty) return false;
+    if (visibility === "hidden" && product.visible && !isDirty) return false;
     if (type && product.type !== type) return false;
     if (
-      globalSearch &&
-      !product.name.toLowerCase().includes(globalSearch.toLowerCase())
+      q &&
+      !product.name.toLowerCase().includes(q) &&
+      !product.productId.toLowerCase().includes(q)
     ) {
       return false;
     }
@@ -1007,6 +1509,8 @@ function MenuItemsView({
   });
 
   function toggleProduct(product: MenuProduct) {
+    setStatusMessage("");
+    setErrorMessage("");
     if (product.visible && product.affectedMeals) {
       setWarningProduct(product);
       return;
@@ -1020,6 +1524,8 @@ function MenuItemsView({
 
   function confirmHide() {
     if (!warningProduct) return;
+    setStatusMessage("");
+    setErrorMessage("");
     setProducts((current) =>
       current.map((item) =>
         item.id === warningProduct.id ? { ...item, visible: false } : item,
@@ -1028,13 +1534,59 @@ function MenuItemsView({
     setWarningProduct(null);
   }
 
+  async function saveVisibilityChanges() {
+    if (dirtyChanges.length === 0) {
+      return;
+    }
+
+    setSaving(true);
+    setErrorMessage("");
+    setStatusMessage("");
+    try {
+      const response = await saveAdminMenuVisibility(
+        sessionToken,
+        dirtyChanges.map((product) => ({
+          menuProductId: product.id,
+          isVisible: product.visible,
+        })),
+      );
+      const nextProducts = response.products.map(mapAdminMenuProduct);
+      setProducts(nextProducts);
+      setSavedProducts(nextProducts);
+      setTableState(nextProducts.length > 0 ? "ready" : "empty");
+      setStatusMessage(
+        response.forcedHiddenMenuProductIds.length > 0
+          ? `Saved ${response.updatedCount} changes. ${response.forcedHiddenMenuProductIds.length} meals were hidden because required groups have no visible options.`
+          : `Saved ${response.updatedCount} visibility changes.`,
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not save menu visibility changes.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function resetVisibilityChanges() {
+    setProducts(savedProducts.map((product) => ({ ...product })));
+    setStatusMessage("");
+    setErrorMessage("");
+  }
+
   return (
     <div className="flex min-h-full flex-col">
       <ViewHeader
         title="Menu Items"
         description={`${filtered.length} products in current view`}
       />
-      <div className="flex flex-wrap items-center gap-2 border-b border-[var(--admin-border)] bg-[#182030]/35 px-5 py-3">
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
+      {statusMessage ? (
+        <AdminAlert tone="success">{statusMessage}</AdminAlert>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2 border-b border-(--admin-border) bg-[#182030]/35 px-5 py-3">
         <SlidersHorizontal className="size-4 text-[#6b7694]" />
         <AdminSelect value={type} onChange={setType}>
           <option value="">Any type</option>
@@ -1047,59 +1599,105 @@ function MenuItemsView({
           <option value="visible">Visible</option>
           <option value="hidden">Hidden</option>
         </AdminSelect>
+        <div className="ml-auto flex items-center gap-2">
+          {dirtyChanges.length > 0 ? (
+            <span className="text-xs font-semibold text-amber-300">
+              {dirtyChanges.length} unsaved
+            </span>
+          ) : (
+            <span className="text-xs text-[#6b7694]">No unsaved changes</span>
+          )}
+          <SecondaryButton
+            onClick={resetVisibilityChanges}
+            disabled={dirtyChanges.length === 0 || saving}
+          >
+            Reset
+          </SecondaryButton>
+          <PrimaryButton
+            type="button"
+            onClick={saveVisibilityChanges}
+            disabled={saving || dirtyChanges.length === 0}
+          >
+            {saving ? "Saving..." : "Save changes"}
+          </PrimaryButton>
+        </div>
       </div>
-      <DataTable columns={["Product", "Type", "Category", "Restaurant", "Price", "Visibility"]}>
-        {filtered.map((product) => (
-          <tr key={product.id} className="border-b border-[var(--admin-border)]">
-            <Cell>
-              <div className="flex items-center gap-3">
-                <img
-                  src={product.imageUrl}
-                  alt=""
-                  className="size-10 rounded object-cover"
-                />
-                <div>
-                  <p className="font-semibold text-[#dde2ee]">{product.name}</p>
-                  <p className="font-mono text-[10px] text-[#6b7694]">
-                    {product.productId}
-                  </p>
-                </div>
-              </div>
-            </Cell>
-            <Cell>
-              <Badge tone="neutral">{product.type}</Badge>
-            </Cell>
-            <Cell muted>{product.category}</Cell>
-            <Cell muted>{restaurantName(product.restaurantId)}</Cell>
-            <Cell mono>{formatPrice(product.priceCents)}</Cell>
-            <Cell>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => toggleProduct(product)}
-                  className={`relative h-5 w-9 rounded-full transition ${
-                    product.visible ? "bg-emerald-500" : "bg-[#2d3a5c]"
-                  }`}
-                  aria-label={`Toggle ${product.name} visibility`}
-                >
-                  <span
-                    className={`absolute top-0.5 size-4 rounded-full bg-white transition ${
-                      product.visible ? "left-4" : "left-0.5"
-                    }`}
+      <StatePanel state={tableState} emptyLabel="No menu items found">
+        <DataTable
+          columns={[
+            "Product",
+            "Type",
+            "Category",
+            "Restaurant",
+            "Price",
+            "Visibility",
+          ]}
+        >
+          {filtered.map((product) => (
+            <tr key={product.id} className="border-b border-(--admin-border)">
+              <Cell>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={product.imageUrl}
+                    alt=""
+                    className="size-10 rounded object-cover"
                   />
-                </button>
-                <span
-                  className={`text-xs font-semibold ${
-                    product.visible ? "text-emerald-300" : "text-[#6b7694]"
-                  }`}
-                >
-                  {product.visible ? "Visible" : "Hidden"}
-                </span>
-              </div>
-            </Cell>
-          </tr>
-        ))}
-      </DataTable>
+                  <div>
+                    <p className="font-semibold text-[#dde2ee]">
+                      {product.name}
+                    </p>
+                    <p className="font-mono text-[10px] text-[#6b7694]">
+                      {product.productId}
+                    </p>
+                  </div>
+                </div>
+              </Cell>
+              <Cell>
+                <Badge tone="neutral">{product.type}</Badge>
+              </Cell>
+              <Cell muted>{product.category}</Cell>
+              <Cell muted>
+                {restaurants.find((restaurant) => restaurant.id === product.restaurantId)
+                  ?.name ?? product.restaurantName}
+              </Cell>
+              <Cell mono>
+                {formatPrice(product.priceCents)} {product.currencyCode}
+              </Cell>
+              <Cell>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleProduct(product)}
+                    className={`relative h-5 w-9 rounded-full transition ${
+                      product.visible ? "bg-emerald-500" : "bg-[#2d3a5c]"
+                    }`}
+                    aria-label={`Toggle ${product.name} visibility`}
+                  >
+                    <span
+                      className={`absolute top-0.5 size-4 rounded-full bg-white transition ${
+                        product.visible ? "left-4" : "left-0.5"
+                      }`}
+                    />
+                  </button>
+                  <span
+                    className={`text-xs font-semibold ${
+                      product.visible ? "text-emerald-300" : "text-[#6b7694]"
+                    }`}
+                  >
+                    {product.visible ? "Visible" : "Hidden"}
+                  </span>
+                  {product.forcedHiddenReason ? (
+                    <Badge tone="amber">Meal auto-hidden</Badge>
+                  ) : null}
+                  {dirtyProductIds.has(product.id) ? (
+                    <Badge tone="amber">Unsaved</Badge>
+                  ) : null}
+                </div>
+              </Cell>
+            </tr>
+          ))}
+        </DataTable>
+      </StatePanel>
 
       {warningProduct ? (
         <Modal title="Visibility warning" onClose={() => setWarningProduct(null)}>
@@ -1110,13 +1708,11 @@ function MenuItemsView({
               </div>
               <div>
                 <p className="text-sm font-semibold text-white">
-                  Hiding this item affects meals
+                  Hiding this item can affect meals
                 </p>
                 <p className="mt-1 text-sm leading-6 text-[#9aaabb]">
-                  Hiding {warningProduct.name} will make{" "}
-                  {warningProduct.affectedMeals} meals unavailable because the
-                  required {warningProduct.requiredGroup} group will have no
-                  visible option.
+                  If a required meal group has no visible options after saving,
+                  the backend will hide that meal from the kiosk menu.
                 </p>
               </div>
             </div>
@@ -1135,29 +1731,51 @@ function MenuItemsView({
   );
 }
 
-function AdminUsersView() {
+function AdminUsersView({ sessionToken }: { sessionToken: string }) {
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [users, setUsers] = useState(adminUsers);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [adminRestaurants, setAdminRestaurants] = useState<
+    AdminRestaurantSummary[]
+  >([]);
+  const [tableState, setTableState] = useState<TableState>("loading");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  function handleInvite(invite: {
+  const loadAdminData = useCallback(async () => {
+    setTableState("loading");
+    setErrorMessage("");
+    try {
+      const [userResponse, restaurantResponse] = await Promise.all([
+        listAdminUsers(sessionToken),
+        listAdminRestaurants(sessionToken),
+      ]);
+      setUsers(userResponse.users.map(mapAdminUser));
+      setAdminRestaurants(restaurantResponse.restaurants);
+      setTableState(userResponse.users.length > 0 ? "ready" : "empty");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not load admin users.",
+      );
+      setTableState("error");
+    }
+  }, [sessionToken]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadAdminData);
+  }, [loadAdminData]);
+
+  async function handleInvite(invite: {
     email: string;
     password: string;
     restaurantId: string;
-  }) {
-    const restaurant = restaurantName(invite.restaurantId);
-    setUsers((current) => [
-      ...current,
-      {
-        id: `admin_${current.length + 1}`.padStart(9, "0"),
-        email: invite.email,
-        name: invite.email.split("@")[0] || "Invited admin",
-        role: "ADMIN",
-        restaurants: [restaurant],
-        twoFactorEnabled: false,
-        status: "pending",
-        lastLoginAt: "Never",
-      },
-    ]);
+  }): Promise<InviteAdminUserResponse> {
+    const response = await inviteAdminUser(sessionToken, {
+      email: invite.email,
+      password: invite.password,
+      restaurantIds: [invite.restaurantId],
+    });
+    await loadAdminData();
+
+    return response;
   }
 
   return (
@@ -1171,49 +1789,57 @@ function AdminUsersView() {
           </PrimaryButton>
         }
       />
-      <DataTable
-        columns={[
-          "Name",
-          "Email",
-          "Role",
-          "Restaurants",
-          "2FA",
-          "Activity",
-          "Status",
-          "Last login",
-        ]}
-      >
-        {users.map((admin) => (
-          <tr key={admin.id} className="border-b border-[var(--admin-border)]">
-            <Cell>{admin.name}</Cell>
-            <Cell mono muted>{admin.email}</Cell>
-            <Cell>
-              <Badge tone={admin.role === "SUPER_ADMIN" ? "purple" : "blue"}>
-                {admin.role}
-              </Badge>
-            </Cell>
-            <Cell muted>{admin.restaurants.join(", ")}</Cell>
-            <Cell>
-              <Badge tone={admin.twoFactorEnabled ? "green" : "amber"}>
-                {admin.twoFactorEnabled ? "Enabled" : "Pending"}
-              </Badge>
-            </Cell>
-            <Cell>
-              <Badge tone={admin.status === "active" ? "green" : "amber"}>
-                {admin.status === "active" ? "Active user" : "Invitation sent"}
-              </Badge>
-            </Cell>
-            <Cell>
-              <Badge tone={admin.status === "active" ? "green" : "amber"}>
-                {admin.status}
-              </Badge>
-            </Cell>
-            <Cell muted>{admin.lastLoginAt === "Never" ? "Never" : formatDateTime(admin.lastLoginAt)}</Cell>
-          </tr>
-        ))}
-      </DataTable>
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
+      <StatePanel state={tableState} emptyLabel="No admin users found">
+        <DataTable
+          columns={[
+            "Name",
+            "Email",
+            "Role",
+            "Restaurants",
+            "2FA",
+            "Activity",
+            "Status",
+            "Last login",
+          ]}
+        >
+          {users.map((admin) => (
+            <tr key={admin.id} className="border-b border-(--admin-border)">
+              <Cell>{admin.name}</Cell>
+              <Cell mono muted>{admin.email}</Cell>
+              <Cell>
+                <Badge tone={admin.role === "SUPER_ADMIN" ? "purple" : "blue"}>
+                  {admin.role}
+                </Badge>
+              </Cell>
+              <Cell muted>{admin.restaurants.join(", ")}</Cell>
+              <Cell>
+                <Badge tone={admin.twoFactorEnabled ? "green" : "amber"}>
+                  {admin.twoFactorEnabled ? "Enabled" : "Pending"}
+                </Badge>
+              </Cell>
+              <Cell>
+                <Badge tone={admin.status === "active" ? "green" : "amber"}>
+                  {admin.status === "active" ? "Active user" : "Invitation sent"}
+                </Badge>
+              </Cell>
+              <Cell>
+                <Badge tone={admin.status === "active" ? "green" : "amber"}>
+                  {admin.status}
+                </Badge>
+              </Cell>
+              <Cell muted>
+                {admin.lastLoginAt === "Never"
+                  ? "Never"
+                  : formatDateTime(admin.lastLoginAt)}
+              </Cell>
+            </tr>
+          ))}
+        </DataTable>
+      </StatePanel>
       {inviteOpen ? (
         <InviteModal
+          restaurants={adminRestaurants}
           onClose={() => setInviteOpen(false)}
           onInvite={handleInvite}
         />
@@ -1223,25 +1849,38 @@ function AdminUsersView() {
 }
 
 function InviteModal({
+  restaurants,
   onClose,
   onInvite,
 }: {
+  restaurants: AdminRestaurantSummary[];
   onClose: () => void;
   onInvite: (invite: {
     email: string;
     password: string;
     restaurantId: string;
-  }) => void;
+  }) => Promise<InviteAdminUserResponse>;
 }) {
-  const [sent, setSent] = useState(false);
+  const [sent, setSent] = useState<InviteAdminUserResponse | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [restaurantId, setRestaurantId] = useState(restaurants[0]?.id ?? "");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onInvite({ email, password, restaurantId });
-    setSent(true);
+    setBusy(true);
+    setErrorMessage("");
+    try {
+      setSent(await onInvite({ email, password, restaurantId }));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not send invite.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -1253,14 +1892,17 @@ function InviteModal({
         {sent ? (
           <div className="space-y-4">
             <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-200">
-              Invitation sent to <strong>{email}</strong>. The new admin is now
-              listed as pending until they complete 2FA and first login.
+              Invitation sent to <strong>{sent.email}</strong>. The new admin is
+              pending until they confirm the invite and complete 2FA login.
             </div>
-            <div className="rounded-md border border-[var(--admin-border)] bg-[#0c0f1a] p-4 text-xs leading-5 text-[#9aaabb]">
-              Frontend mock note: the password is collected here because the
-              super admin currently prepares credentials. Backend should hash
-              it and email only the invite link or onboarding instructions.
-            </div>
+            <AdminReadonly label="Invitation URL" value={sent.invitationUrl} />
+            <AdminReadonly
+              label="Google Authenticator manual key"
+              value={sent.twoFactorSetup.manualEntryKey}
+            />
+            {sent.delivery.previewToken ? (
+              <AdminReadonly label="Dev invite token" value={sent.delivery.previewToken} />
+            ) : null}
             <div className="flex justify-end">
               <PrimaryButton type="button" onClick={onClose}>
                 Close
@@ -1269,7 +1911,10 @@ function InviteModal({
           </div>
         ) : (
           <>
-            <p className="rounded-md border border-[var(--admin-border)] bg-[#0c0f1a] px-3 py-2 text-xs leading-5 text-[#9aaabb]">
+            {errorMessage ? (
+              <AdminAlert tone="error">{errorMessage}</AdminAlert>
+            ) : null}
+            <p className="rounded-md border border-(--admin-border) bg-[#0c0f1a] px-3 py-2 text-xs leading-5 text-[#9aaabb]">
               Super admin creates the worker account, sets initial credentials,
               and sends the invite. The user becomes active only after 2FA
               setup and first successful login.
@@ -1290,7 +1935,7 @@ function InviteModal({
                 onChange={(event) => setPassword(event.target.value)}
                 type="password"
                 required
-                minLength={8}
+                minLength={12}
                 placeholder="Temporary password"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
               />
@@ -1303,14 +1948,16 @@ function InviteModal({
               <AdminSelect value={restaurantId} onChange={setRestaurantId}>
                 {restaurants.map((restaurant) => (
                   <option key={restaurant.id} value={restaurant.id}>
-                    {restaurant.name}
+                    {restaurant.name} ({restaurant.slug})
                   </option>
                 ))}
               </AdminSelect>
             </div>
             <div className="flex justify-end gap-2">
               <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-              <PrimaryButton type="submit">Send invitation</PrimaryButton>
+              <PrimaryButton type="submit" disabled={busy || !restaurantId}>
+                {busy ? "Sending..." : "Send invitation"}
+              </PrimaryButton>
             </div>
           </>
         )}
@@ -1334,7 +1981,7 @@ function SettingsView() {
     <PlaceholderView
       icon={<Settings className="size-6" />}
       title="Settings"
-      text="Admin settings will include session behavior, trusted devices, and 2FA recovery policy."
+      text="Admin settings will include session behavior and 2FA recovery policy."
     />
   );
 }
@@ -1350,7 +1997,7 @@ function PlaceholderView({
 }) {
   return (
     <div className="flex min-h-full items-center justify-center p-8">
-      <div className="max-w-md rounded-lg border border-[var(--admin-border)] bg-[#111828] p-8 text-center">
+      <div className="max-w-md rounded-lg border border-(--admin-border) bg-[#111828] p-8 text-center">
         <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-[#182030] text-[#9aaabb]">
           {icon}
         </div>
@@ -1371,7 +2018,7 @@ function ViewHeader({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-16 items-center justify-between border-b border-[var(--admin-border)] px-5 py-3">
+    <div className="flex min-h-16 items-center justify-between border-b border-(--admin-border) px-5 py-3">
       <div>
         <h1 className="text-sm font-semibold text-white">{title}</h1>
         <p className="mt-0.5 text-xs text-[#6b7694]">{description}</p>
@@ -1390,13 +2037,13 @@ function DataTable({
 }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] text-left">
+      <table className="w-full min-w-190 text-left">
         <thead className="bg-[#111828]">
           <tr>
             {columns.map((column) => (
               <th
                 key={column}
-                className="border-b border-[var(--admin-border)] px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b7694]"
+                className="border-b border-(--admin-border) px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#6b7694]"
               >
                 {column}
               </th>
@@ -1437,7 +2084,7 @@ function DetailSection({ title, children }: { title: string; children: ReactNode
       <h2 className="mb-2 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6b7694]">
         {title}
       </h2>
-      <div className="rounded-md border border-[var(--admin-border)]">
+      <div className="rounded-md border border-(--admin-border)">
         {children}
       </div>
     </section>
@@ -1456,7 +2103,7 @@ function Detail({
   strong?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-[170px_1fr] gap-4 border-b border-[var(--admin-border)] px-4 py-2.5 last:border-b-0">
+    <div className="grid grid-cols-[170px_1fr] gap-4 border-b border-(--admin-border) px-4 py-2.5 last:border-b-0">
       <dt className="text-xs text-[#6b7694]">{label}</dt>
       <dd className={`text-xs text-[#dde2ee] ${mono ? "font-mono" : ""} ${strong ? "font-semibold" : ""}`}>
         {value}
@@ -1509,7 +2156,7 @@ function DemoStateControls({
   onChange: (value: TableState) => void;
 }) {
   return (
-    <div className="flex overflow-hidden rounded border border-[var(--admin-border)]">
+    <div className="flex overflow-hidden rounded border border-(--admin-border)">
       {(["ready", "loading", "error", "empty"] as const).map((state) => (
         <button
           key={state}
@@ -1535,6 +2182,25 @@ function PanelHeading({ title, text }: { title: string; text: string }) {
   );
 }
 
+function AdminAlert({
+  tone,
+  children,
+}: {
+  tone: "success" | "error";
+  children: ReactNode;
+}) {
+  const classes =
+    tone === "success"
+      ? "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
+      : "border-red-500/25 bg-red-500/10 text-red-200";
+
+  return (
+    <div className={`mb-4 rounded-md border px-3 py-2 text-xs leading-5 ${classes}`}>
+      {children}
+    </div>
+  );
+}
+
 function AdminField({
   label,
   icon,
@@ -1547,7 +2213,7 @@ function AdminField({
   return (
     <label className="block space-y-2">
       <span className="text-xs font-semibold text-[#9aaabb]">{label}</span>
-      <span className="flex h-11 items-center gap-2 rounded-md border border-[var(--admin-border)] bg-[#182030] px-3 text-[#9aaabb] focus-within:border-[#4f7ef7]">
+      <span className="flex h-11 items-center gap-2 rounded-md border border-(--admin-border) bg-[#182030] px-3 text-[#9aaabb] focus-within:border-[#4f7ef7]">
         {icon}
         {children}
       </span>
@@ -1559,7 +2225,7 @@ function AdminReadonly({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-2">
       <p className="text-xs font-semibold text-[#9aaabb]">{label}</p>
-      <div className="rounded-md border border-[var(--admin-border)] bg-[#182030] px-3 py-2 text-sm font-semibold text-[#dde2ee]">
+      <div className="rounded-md border border-(--admin-border) bg-[#182030] px-3 py-2 text-sm font-semibold text-[#dde2ee]">
         {value}
       </div>
     </div>
@@ -1579,7 +2245,7 @@ function AdminSelect({
     <select
       value={value}
       onChange={(event) => onChange(event.target.value)}
-      className="h-8 rounded border border-[var(--admin-border)] bg-[#182030] px-2 text-xs text-[#dde2ee] outline-none focus:border-[#4f7ef7]"
+      className="h-8 rounded border border-(--admin-border) bg-[#182030] px-2 text-xs text-[#dde2ee] outline-none focus:border-[#4f7ef7]"
     >
       {children}
     </select>
@@ -1589,17 +2255,24 @@ function AdminSelect({
 function PrimaryButton({
   type,
   onClick,
+  disabled,
   children,
 }: {
   type: "button" | "submit";
   onClick?: () => void;
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
     <button
       type={type}
       onClick={onClick}
-      className={`min-h-9 rounded-md bg-[#4f7ef7] px-3 text-xs font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+      disabled={disabled}
+      className={`min-h-9 rounded-md px-3 text-xs font-semibold transition ${
+        disabled
+          ? "cursor-not-allowed bg-[#2d3a5c] text-[#6b7694]"
+          : "bg-[#4f7ef7] text-white hover:bg-[#416de0]"
+      } ${focusRing}`}
     >
       {children}
     </button>
@@ -1608,16 +2281,23 @@ function PrimaryButton({
 
 function SecondaryButton({
   onClick,
+  disabled,
   children,
 }: {
   onClick: () => void;
+  disabled?: boolean;
   children: ReactNode;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-9 rounded-md border border-[var(--admin-border)] px-3 text-xs font-semibold text-[#9aaabb] transition hover:text-white ${focusRing}`}
+      disabled={disabled}
+      className={`min-h-9 rounded-md border border-(--admin-border) px-3 text-xs font-semibold transition ${
+        disabled
+          ? "cursor-not-allowed text-[#4f5872]"
+          : "text-[#9aaabb] hover:text-white"
+      } ${focusRing}`}
     >
       {children}
     </button>
@@ -1673,7 +2353,7 @@ function Badge({
     red: "border-red-500/25 bg-red-500/10 text-red-300",
     blue: "border-sky-500/25 bg-sky-500/10 text-sky-300",
     purple: "border-violet-500/25 bg-violet-500/10 text-violet-300",
-    neutral: "border-[var(--admin-border)] bg-[#182030] text-[#9aaabb]",
+    neutral: "border-(--admin-border) bg-[#182030] text-[#9aaabb]",
   } satisfies Record<string, string>;
 
   return (
@@ -1723,8 +2403,8 @@ function Modal({
       aria-label={title}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-5 backdrop-blur-sm"
     >
-      <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-lg border border-[var(--admin-border)] bg-[#111828] shadow-2xl shadow-black/40">
-        <div className="flex items-center justify-between border-b border-[var(--admin-border)] px-5 py-3">
+      <div className="max-h-[90vh] w-full max-w-5xl overflow-auto rounded-lg border border-(--admin-border) bg-[#111828] shadow-2xl shadow-black/40">
+        <div className="flex items-center justify-between border-b border-(--admin-border) px-5 py-3">
           <h2 className="text-sm font-semibold text-white">{title}</h2>
           <button
             type="button"
@@ -1741,21 +2421,6 @@ function Modal({
   );
 }
 
-function MockQr() {
-  return (
-    <div className="grid size-40 grid-cols-8 gap-1 rounded-md bg-[#0c0f1a] p-3">
-      {Array.from({ length: 64 }, (_, index) => {
-        const active =
-          index % 3 === 0 ||
-          index % 7 === 0 ||
-          [0, 1, 6, 7, 8, 15, 48, 49, 56, 57].includes(index);
-        return (
-          <span
-            key={index}
-            className={`rounded-sm ${active ? "bg-[#dde2ee]" : "bg-[#182030]"}`}
-          />
-        );
-      })}
-    </div>
-  );
-}
+
+
+

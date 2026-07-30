@@ -130,7 +130,7 @@ function FeaturedHeroBanner({ banner }: FeaturedBannerProps) {
         aria-hidden="true"
         className="absolute -inset-px size-[calc(100%+2px)] max-w-none object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-background via-background/75 to-background/20" />
+      <div className="absolute inset-0 bg-linear-to-r from-background via-background/75 to-background/20" />
       <div className="relative max-w-2xl p-7 sm:p-10">
         
         <h2 className="text-5xl font-bold leading-tight text-foreground">
@@ -153,7 +153,7 @@ function FeaturedSmallBanner({ banner }: FeaturedBannerProps) {
         aria-hidden="true"
         className="absolute -inset-px size-[calc(100%+2px)] max-w-none object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-background/70 to-background/10" />
+      <div className="absolute inset-0 bg-linear-to-r from-background/90 via-background/70 to-background/10" />
       <div className="relative p-6">
         
         <h3 className="text-3xl font-bold text-foreground">{banner.title}</h3>
@@ -174,7 +174,7 @@ function QuickFilterRow({ filters }: QuickFilterRowProps) {
     <section aria-label="Fast menu filters" className="space-y-4">
       <div>
         <h2 className="text-3xl font-bold text-foreground">Explore quickly</h2>
-        <p className="mt-1 text-base text-muted-foreground  text-white">
+        <p className="mt-1 text-base text-muted-foreground">
           Jump to common preferences and dietary options.
         </p>
       </div>
@@ -254,7 +254,7 @@ function CategoryBanner({ category }: CategoryBannerProps) {
         aria-hidden="true"
         className="size-full object-cover"
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-background/10" />
+      <div className="absolute inset-0 bg-linear-to-t from-background via-background/60 to-background/10" />
       <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6">
         <h2 className="text-4xl font-bold text-foreground">
           {category.label}
@@ -268,3 +268,4 @@ function CategoryBanner({ category }: CategoryBannerProps) {
     </div>
   );
 }
+

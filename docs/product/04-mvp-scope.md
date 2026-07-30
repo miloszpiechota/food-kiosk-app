@@ -24,7 +24,6 @@ Define the minimum viable product for the Food Ordering Kiosk App so the first i
 - A company-level super admin can invite selected restaurant workers into the admin panel.
 - Restaurant admins can accept invite links and complete mandatory two-factor authentication setup.
 - Admins can log in with email, password, and a required two-factor code.
-- The admin login design can later support QR-assisted login through a trusted-device flow.
 - Restaurant admins can view, search, and filter incoming orders for assigned restaurants.
 - Restaurant admins can open order details including ordered items, ids, payment method, payment status, and total price.
 - Restaurant admins can manage order status.
@@ -54,7 +53,6 @@ Define the minimum viable product for the Food Ordering Kiosk App so the first i
 - Authentication is required only for administrators accessing the admin panel.
 - Admin self-registration is not part of the normal flow; admins should be invited by a super admin.
 - Admin login requires email, password, and mandatory two-factor authentication.
-- QR-assisted login is allowed only as a secure trusted-device flow, not as a replacement for initial identity proof.
 
 ## MVP Success Definition
 The MVP is successful if a customer can place an order from a kiosk without logging in, complete a Stripe test payment flow, and assigned restaurant admins can securely access an admin area to view, search, and manage resulting orders for their restaurants.

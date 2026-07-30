@@ -484,7 +484,7 @@ Key columns:
 
 #### `admin_login_challenges`
 Purpose:
-- Store short-lived password, TOTP, or QR login challenges before a full admin session is issued
+- Store short-lived TOTP login challenges before a full admin session is issued
 
 Key columns:
 - `id uuid pk`
@@ -551,7 +551,6 @@ Key columns:
 
 ### `admin_login_challenge_type`
 - `totp`
-- `qr_login`
 
 ### `availability_override_type`
 - `closure`
@@ -656,7 +655,7 @@ Recommended contents:
 - Store password hashes with a strong password hashing algorithm such as Argon2.
 - Require TOTP-based two-factor authentication before creating a full admin session.
 - Store TOTP secrets carefully and never expose them after setup.
-- Use QR codes for TOTP enrollment. QR-assisted login requires a separate trusted-device challenge flow.
+- Use manual authenticator setup keys for TOTP enrollment in the current MVP.
 - Scope `ADMIN` users through `admin_restaurant_access`.
 - `SUPER_ADMIN` may have platform-wide access or explicit restaurant access rows, depending on implementation simplicity.
 

@@ -692,7 +692,7 @@ classDiagram
 - `Admin Session` is modeled separately so session expiration and revocation remain explicit.
 - Admin access should be invite-based. Do not email raw passwords.
 - Admin login requires email, password, and mandatory TOTP verification before a full session is issued.
-- QR codes are appropriate for TOTP setup. QR-assisted login requires a trusted-device challenge design and should be treated separately from Google Authenticator enrollment.
+- TOTP setup uses a manual authenticator key in the current MVP.
 - Multilingual kiosk support is easier to scale if translatable catalog fields are stored in dedicated translation tables instead of hardcoding one language per row.
 - Customer language choice is primarily a kiosk session concern rather than a core business entity, and it should persist through the active ordering flow before resetting to a default state for the next customer.
 

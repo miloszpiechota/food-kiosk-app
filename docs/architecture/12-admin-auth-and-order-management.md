@@ -69,8 +69,8 @@ Recommended flow:
 7. Worker sets their own password.
 8. Backend stores the password using a strong password hash such as Argon2.
 9. Backend creates a TOTP secret for the worker.
-10. Frontend displays a QR code for Google Authenticator setup.
-11. Worker scans the QR code and enters the current six-digit code.
+10. Frontend displays the manual authenticator setup key.
+11. Worker adds the key to Google Authenticator and enters the current six-digit code.
 12. Backend verifies the code and enables two-factor authentication.
 13. Invite is marked accepted and the admin account becomes active.
 
@@ -98,43 +98,29 @@ This is the required baseline login.
 
 The final session must not be issued before TOTP is verified.
 
-### Option 2: QR-Assisted Login
-
-QR login should be treated as a separate, higher-risk feature from Google Authenticator setup.
-
-Google Authenticator QR codes normally enroll a TOTP secret; they do not create a passwordless web login by themselves. A secure QR-assisted login requires a previously trusted admin device, existing admin session, or future companion app.
-
-Recommended future flow:
-
-1. Admin opens admin login page and selects QR login.
-2. Backend creates a short-lived QR login challenge.
-3. Frontend renders a QR code containing the challenge id and nonce.
-4. A previously trusted admin device scans the QR code.
-5. Backend verifies that the scanning device belongs to an active admin account with valid 2FA.
-6. The admin confirms the login on the trusted device.
-7. Backend marks the challenge approved.
-8. Browser polls the challenge and receives a final session only after approval.
-
-For the first implementation, build email/password plus mandatory TOTP first. QR-assisted login can be documented and prepared as a later admin-login option unless a trusted-device flow is implemented at the same time.
+Admin access uses email, password, and mandatory TOTP verification only.
 
 ## Recommended Auth Technology
 
 Backend:
 
 - NestJS module: `AdminAuthModule`
-- password hashing: `argon2`
-- TOTP: `otplib`
-- QR generation: `qrcode`
-- sessions: opaque random token stored as hash in `AdminSession`, delivered through secure HTTP-only cookie
-- email: Resend or another transactional email provider
+- current first implementation:
+  - password hashing: Node `crypto.pbkdf2` with per-password salt
+  - TOTP: local RFC 6238-compatible service using Node `crypto`
+  - sessions: opaque random token stored as `AdminSession.tokenHash`, delivered in the response and as an HTTP-only cookie
+  - email: console-backed provider for local development
+- future production provider swaps:
+  - password hashing: `argon2`
+  - TOTP helper library: `otplib`
+  - email: Resend or another transactional email provider
 
 Frontend:
 
 - login form
 - invite acceptance form
-- TOTP QR setup screen
+- manual TOTP setup key display
 - TOTP verification form
-- optional QR login screen after trusted-device support exists
 
 ## Session Rules
 
@@ -251,14 +237,6 @@ PATCH /api/v1/admin/orders/:orderId/status
 
 GET  /api/v1/admin/menu-products
 PATCH /api/v1/admin/menu-products/:menuProductId/visibility
-```
-
-Future QR-assisted login endpoints:
-
-```txt
-POST /api/v1/admin/auth/qr-login/challenges
-POST /api/v1/admin/auth/qr-login/challenges/:challengeId/approve
-GET  /api/v1/admin/auth/qr-login/challenges/:challengeId
 ```
 
 ## Suggested Implementation Order
