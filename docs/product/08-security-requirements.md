@@ -10,7 +10,7 @@ Define the baseline security expectations for the Food Ordering Kiosk App MVP, w
 - `NFR-SEC-004`: Administrator sessions shall expire and shall not remain active indefinitely.
 - `NFR-SEC-005`: The system should provide visible logout behavior or timeout handling to reduce the risk of customer access to an admin session on shared kiosk-adjacent devices.
 - `NFR-SEC-005A`: Two-factor authentication should use a TOTP-compatible authenticator app such as Google Authenticator.
-- `NFR-SEC-005B`: TOTP setup shall use a manual authenticator key in the current MVP.
+- `NFR-SEC-005B`: TOTP setup shall support QR-code enrollment and a manual authenticator key fallback.
 
 ## Admin Registration And Access Control
 - `NFR-SEC-006`: Administrator onboarding shall use super-admin-created invite links rather than public self-registration.
@@ -19,6 +19,7 @@ Define the baseline security expectations for the Food Ordering Kiosk App MVP, w
 - `NFR-SEC-009`: Customers shall have no access to admin routes or admin data.
 - `NFR-SEC-009A`: `ADMIN` users shall only access restaurants assigned to them.
 - `NFR-SEC-009B`: `SUPER_ADMIN` users may invite admins and manage restaurant access.
+- `NFR-SEC-009C`: Temporary development-only admin bypasses must be disabled or removed before production deployment.
 
 ## Payments And Order Integrity
 - `NFR-SEC-010`: Payment status shall be trusted only after verified backend confirmation, including webhook-based validation where applicable.
@@ -36,6 +37,7 @@ Define the baseline security expectations for the Food Ordering Kiosk App MVP, w
 - `NFR-SEC-018`: Suspicious authentication failures and important security-relevant events should be traceable in logs.
 - `NFR-SEC-019`: The system should reduce common and basic attack scenarios, including unauthorized admin access, insecure input handling, and unsafe payment state changes.
 - `NFR-SEC-019A`: Invite acceptance, login challenges, and TOTP verification should expire quickly and be rate-limited.
+- `NFR-SEC-019B`: Unfinished first super-admin setup must not leave an active account. It should remain inactive until TOTP verification succeeds and should support cancellation or expiry cleanup.
 
 ## Validation
 - `NFR-SEC-020`: All backend input shall be validated before processing.
@@ -59,4 +61,5 @@ Define the baseline security expectations for the Food Ordering Kiosk App MVP, w
 ## Notes
 - This document defines baseline product security expectations and does not claim that any of them are already implemented.
 - Admin invite and login screens must remain clearly separated from the customer ordering journey.
+- The current admin panel includes a temporary dev-only bypass for UI work. It is not production auth and must be removed or kept disabled outside local development.
 - Detailed admin auth flow is documented in [Admin Auth And Order Management](../architecture/12-admin-auth-and-order-management.md).

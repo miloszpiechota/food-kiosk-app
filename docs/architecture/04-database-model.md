@@ -448,7 +448,7 @@ Purpose:
 Key columns:
 - `id uuid pk`
 - `email text`
-- `password_hash text null`
+- `password_hash text`
 - `role admin_role`
 - `two_factor_secret text null`
 - `two_factor_enabled boolean`
@@ -503,6 +503,7 @@ Key columns:
 - `id uuid pk`
 - `admin_user_id uuid fk -> admin_users.id`
 - `token_id uuid`
+- `token_hash text`
 - `expires_at timestamptz`
 - `created_at timestamptz`
 - `revoked_at timestamptz null`
@@ -580,6 +581,7 @@ Key columns:
 - `admin_invites.token_hash` unique
 - `admin_login_challenges.token_hash` unique
 - `admin_sessions.token_id` unique
+- `admin_sessions.token_hash` unique
 
 ### Recommended Check Constraints
 - `min_selections >= 0`
@@ -655,7 +657,7 @@ Recommended contents:
 - Store password hashes with a strong password hashing algorithm such as Argon2.
 - Require TOTP-based two-factor authentication before creating a full admin session.
 - Store TOTP secrets carefully and never expose them after setup.
-- Use manual authenticator setup keys for TOTP enrollment in the current MVP.
+- Use QR-code TOTP enrollment with a manual authenticator key fallback where setup is shown.
 - Scope `ADMIN` users through `admin_restaurant_access`.
 - `SUPER_ADMIN` may have platform-wide access or explicit restaurant access rows, depending on implementation simplicity.
 
@@ -667,4 +669,4 @@ Recommended contents:
 - Keep schema relations explicit for `menu_categories` and `menu_products` rather than hiding them inside implicit many-to-many relations.
 
 ## Status
-Planned. This document defines the intended relational database structure and should guide the upcoming Prisma schema design.
+Partially implemented. The main customer ordering, payment, menu, and admin-auth tables exist in the Prisma schema, but this document still describes the target relational model and does not imply every admin workflow is complete.

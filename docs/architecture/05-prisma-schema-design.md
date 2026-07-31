@@ -274,7 +274,7 @@ Recommended admin models:
 model AdminUser {
   id               String   @id @default(uuid()) @db.Uuid
   email            String   @unique @db.Text
-  passwordHash     String?  @map("password_hash") @db.Text
+  passwordHash     String   @map("password_hash") @db.Text
   role             AdminRole
   twoFactorSecret  String?  @map("two_factor_secret") @db.Text
   twoFactorEnabled Boolean  @default(false) @map("two_factor_enabled")
@@ -297,7 +297,7 @@ Security rules:
 - store invite tokens and session tokens as hashes
 - never email raw passwords
 - issue a final admin session only after password and TOTP verification
-- use manual authenticator setup keys for TOTP setup in the current MVP
+- use QR-code TOTP setup with a manual authenticator key fallback where setup is shown
 
 ## Availability Modeling In Prisma
 
@@ -417,4 +417,4 @@ If basket and order snapshots are omitted or made too small, historical pricing 
 If basket and order lines do not preserve `menuProductId`, menu-specific price history becomes unreliable.
 
 ## Status
-Planned. This document defines how the database model should be translated into Prisma before the actual schema file is written.
+Partially implemented. The Prisma schema and migrations now include the core customer ordering, payment, menu, and admin-auth models. This document remains the design reference for planned refinements and should not be read as proof that every workflow is complete.

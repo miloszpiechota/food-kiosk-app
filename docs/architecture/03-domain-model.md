@@ -526,6 +526,7 @@ Suggested attributes:
 - `id`
 - `adminUserId`
 - `tokenId`
+- `tokenHash`
 - `expiresAt`
 - `createdAt`
 - `revokedAt`
@@ -692,9 +693,11 @@ classDiagram
 - `Admin Session` is modeled separately so session expiration and revocation remain explicit.
 - Admin access should be invite-based. Do not email raw passwords.
 - Admin login requires email, password, and mandatory TOTP verification before a full session is issued.
-- TOTP setup uses a manual authenticator key in the current MVP.
+- TOTP setup uses a QR code with a manual authenticator key fallback for first super-admin setup.
+- The current invite implementation creates inactive admin users with an initial password set by the super admin; production should move invited users to a self-set-password flow.
+- Temporary admin-panel bypass behavior is development-only and is not part of the production domain model.
 - Multilingual kiosk support is easier to scale if translatable catalog fields are stored in dedicated translation tables instead of hardcoding one language per row.
 - Customer language choice is primarily a kiosk session concern rather than a core business entity, and it should persist through the active ordering flow before resetting to a default state for the next customer.
 
 ## Status
-Planned. This document defines intended domain structure and does not imply implementation is complete.
+Partially implemented. This document defines the intended domain structure and includes several entities already present in the Prisma schema, but it does not imply every admin workflow is complete.

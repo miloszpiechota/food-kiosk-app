@@ -2,9 +2,28 @@
 
 ## Status
 
-Planned next implementation slice.
+Partially implemented.
 
-The current customer kiosk flow is implemented through order snapshot creation and Stripe test-payment confirmation. The next admin milestone is multi-restaurant admin access, invite-based onboarding, mandatory two-factor authentication, and restaurant-scoped order/menu operations.
+Implemented now:
+
+- `AdminAuthModule` with first super-admin bootstrap, bootstrap status, cancelable bootstrap setup, email/password login, mandatory TOTP challenge, password reset, invite creation, invite confirmation, session lookup, and logout.
+- First super-admin setup is a two-step flow: account details first, then QR/manual TOTP enrollment and six-digit verification before the account becomes active.
+- Admin sessions use opaque tokens, token hashes in the database, and HTTP-only cookies.
+- Admin guards protect restaurant and menu-product endpoints.
+- `SUPER_ADMIN` can invite `ADMIN` users and list admin users.
+- Admin menu-product list and batch visibility save are backend-backed.
+- Admin order list, search, filters, detail view, and status updates are backend-backed.
+- Admin order status updates validate allowed workflow transitions on the backend.
+- Kiosk catalog responses hide meals when a required meal group has no visible menu option.
+- The frontend admin panel has login, first setup, invite confirmation, password reset, order search/filter/detail/status management, menu visibility save/reset controls, and a temporary dev-only bypass for UI work.
+
+Still incomplete:
+
+- Production email provider. Current local email delivery is console-backed.
+- Production password hashing hardening. Current implementation uses Node `crypto.pbkdf2`; Argon2 is still preferred before production.
+- Rate limiting, audit logging, recovery-code policy, and broader security hardening.
+- Backend-backed restaurant management screens.
+- Removal of the temporary dev-only admin bypass before production use.
 
 ## Goals
 
@@ -33,10 +52,13 @@ Allowed responsibilities:
 - hide and unhide menu products
 - deactivate admin users
 
-Initial seed strategy:
+Initial setup strategy:
 
-- the first platform owner account should be seeded or created through a protected setup command as `SUPER_ADMIN`
-- no public self-registration endpoint should create a super admin
+- the first platform owner account is created through the protected bootstrap flow
+- bootstrap is available only while no admin users exist, or after an unfinished bootstrap setup is canceled or expires and is cleaned up
+- if `ADMIN_BOOTSTRAP_TOKEN` is configured, the user must provide it before moving to TOTP setup
+- the first `SUPER_ADMIN` stays inactive until the TOTP QR/manual-key setup is verified with a six-digit authenticator code
+- no public self-registration endpoint creates a super admin
 
 ### `ADMIN`
 
@@ -56,23 +78,23 @@ Allowed responsibilities:
 
 ## Invite-Based Onboarding
 
-Do not email passwords.
-
-Recommended flow:
+Current flow:
 
 1. `SUPER_ADMIN` opens admin user management.
-2. `SUPER_ADMIN` enters email, role, and restaurant access.
-3. Backend creates an `AdminInvite` with a high-entropy random token.
+2. `SUPER_ADMIN` enters email, temporary password, and restaurant access.
+3. Backend creates an inactive `AdminUser`, TOTP secret, restaurant access rows, and an `AdminInvite`.
 4. Backend stores only `tokenHash`, not the raw invite token.
-5. Backend sends an email with an invite link.
-6. Invited worker opens the link.
-7. Worker sets their own password.
-8. Backend stores the password using a strong password hash such as Argon2.
-9. Backend creates a TOTP secret for the worker.
-10. Frontend displays the manual authenticator setup key.
-11. Worker adds the key to Google Authenticator and enters the current six-digit code.
-12. Backend verifies the code and enables two-factor authentication.
-13. Invite is marked accepted and the admin account becomes active.
+5. Current local delivery writes the invite URL and manual TOTP key through the console-backed email provider.
+6. Invited worker opens the invite link.
+7. Backend marks the invite accepted and activates the already-created admin account.
+8. Worker signs in with email, temporary password, and the TOTP code.
+
+Production target:
+
+- do not email passwords
+- invited workers should set their own password during invite acceptance
+- invite acceptance should include QR/manual TOTP enrollment and code verification before activation
+- use a real transactional provider such as Resend, Postmark, SendGrid, or AWS SES
 
 Recommended email providers:
 
@@ -81,7 +103,7 @@ Recommended email providers:
 - SendGrid
 - AWS SES
 
-For this project, Resend is the simplest first choice.
+For this project, Resend is the simplest first production choice.
 
 ## Login Options
 
@@ -119,8 +141,10 @@ Frontend:
 
 - login form
 - invite acceptance form
-- manual TOTP setup key display
+- QR code and manual TOTP setup key display for first super-admin setup
 - TOTP verification form
+- password reset form
+- temporary dev-only bypass button for UI work; remove before production
 
 ## Session Rules
 
@@ -146,19 +170,17 @@ All admin endpoints must enforce restaurant access before returning or mutating 
 
 ## Admin Order List
 
-The order list should be dense and searchable.
+The order list is dense and searchable. It intentionally returns summary rows rather than every nested order item so the table can stay fast and simple.
 
-Recommended filters:
+Current filters:
 
 - restaurant
 - order status
 - payment status
-- order number
 - date range
-- payment provider
 - text search across order number and item names
 
-Recommended row fields:
+Current row fields:
 
 - order id
 - order number
@@ -170,11 +192,19 @@ Recommended row fields:
 - created time
 - item count
 
+Current endpoint:
+
+```txt
+GET /api/v1/admin/orders?restaurantId=...&orderStatus=NEW&paymentStatus=PAID&dateFrom=...&dateTo=...&search=...
+```
+
+The list endpoint is necessary because the admin dashboard needs a lightweight, filterable table without loading full order-item snapshots for every row.
+
 ## Admin Order Detail
 
-When an admin opens an order, show the crucial operational and payment details.
+When an admin opens an order, the UI calls the detail endpoint to show the crucial operational and payment details.
 
-Recommended detail fields:
+Current detail fields:
 
 - order id
 - order number
@@ -203,9 +233,51 @@ Recommended detail fields:
 
 Do not expose secrets or raw webhook payloads in the admin UI.
 
+Current endpoint:
+
+```txt
+GET /api/v1/admin/orders/:orderId
+```
+
+The detail endpoint is necessary because full order-item ids, payment provider ids, and configuration snapshots are heavier data that should be loaded only for the selected order.
+
+## Admin Order Status Updates
+
+Current endpoint:
+
+```txt
+PATCH /api/v1/admin/orders/:orderId/status
+```
+
+Current request:
+
+```json
+{
+  "status": "IN_PROGRESS"
+}
+```
+
+Allowed transitions:
+
+- `NEW` -> `IN_PROGRESS`, `CANCELLED`
+- `IN_PROGRESS` -> `READY`, `CANCELLED`
+- `READY` -> `COMPLETED`, `CANCELLED`
+- `COMPLETED` -> no further transition
+- `CANCELLED` -> no further transition
+
+The backend rejects invalid statuses, invalid order ids, orders outside the admin's restaurant access, and attempts to mark unpaid orders as `COMPLETED`.
+
 ## Admin Menu Search And Hide Rules
 
 Admins need to search menu items and hide or unhide products for assigned restaurants.
+
+Current implementation:
+
+- `GET /api/v1/admin/menu-products` lists accessible menu products.
+- `PATCH /api/v1/admin/menu-products/visibility` saves a batch of visibility changes.
+- The frontend tracks unsaved visibility changes, supports reset to last saved state, and updates the table from the backend response after save.
+- If a required meal group has no visible options after saving, the backend force-hides the affected meal record and returns `forcedHiddenMenuProductIds`.
+- The kiosk catalog also dynamically filters meals out of category responses when a required group has no visible option.
 
 Recommended public kiosk availability rule:
 
@@ -216,19 +288,34 @@ Recommended public kiosk availability rule:
 - for a meal or large meal, every required group must have at least one available option
 - a group option is available only when `ProductGroupOption.isAvailable = true` and its referenced product is available
 
-If an admin hides `Small Fries` and that product is the only available option in the side group for a meal, the backend should stop returning that meal in kiosk catalog responses.
+If an admin hides `Small Fries` and that product is the only visible option in the side group for a meal, the backend stops returning that meal in kiosk catalog responses.
 
-Prefer dynamic orderability calculation over physically auto-hiding the meal record. This avoids hidden side effects and makes the reason visible to admin tooling later.
+Current implementation both:
+
+- force-hides affected meal `MenuProduct` rows during admin visibility save
+- defensively filters invalid meals from kiosk category/detail responses
+
+Potential refinement:
+
+- later, consider storing explicit admin visibility separately from computed orderability so the system can distinguish "manually hidden" from "temporarily unorderable because a required option is unavailable."
 
 ## Recommended Endpoint Shape
 
 ```txt
-POST /api/v1/admin/auth/invites
-POST /api/v1/admin/auth/invites/:token/accept
+GET  /api/v1/admin/auth/bootstrap-status
+POST /api/v1/admin/auth/bootstrap-super-admin
+POST /api/v1/admin/auth/verify-bootstrap-2fa
+POST /api/v1/admin/auth/cancel-bootstrap-setup
 POST /api/v1/admin/auth/login
-POST /api/v1/admin/auth/totp/verify
-POST /api/v1/admin/auth/logout
+POST /api/v1/admin/auth/verify-2fa
+POST /api/v1/admin/auth/confirm-invite
+POST /api/v1/admin/auth/forgot-password
+POST /api/v1/admin/auth/reset-password
 GET  /api/v1/admin/auth/me
+POST /api/v1/admin/auth/logout
+
+GET  /api/v1/admin/users
+POST /api/v1/admin/users/invite
 
 GET  /api/v1/admin/restaurants
 GET  /api/v1/admin/orders
@@ -236,18 +323,16 @@ GET  /api/v1/admin/orders/:orderId
 PATCH /api/v1/admin/orders/:orderId/status
 
 GET  /api/v1/admin/menu-products
-PATCH /api/v1/admin/menu-products/:menuProductId/visibility
+PATCH /api/v1/admin/menu-products/visibility
 ```
 
 ## Suggested Implementation Order
 
-1. Update Prisma schema for `SUPER_ADMIN`, invites, 2FA fields, login challenges, and restaurant access.
-2. Seed or bootstrap the first `SUPER_ADMIN`.
-3. Implement invite creation and invite acceptance.
-4. Implement password login plus mandatory TOTP verification.
-5. Add admin guards and restaurant-scope authorization.
-6. Build admin login, invite acceptance, and TOTP setup screens.
-7. Build admin order list and detail endpoints.
-8. Build admin order list/detail UI.
-9. Build menu search and hide/unhide endpoints.
-10. Add dynamic meal orderability filtering for hidden group options.
+1. Refine invite acceptance so invited admins set their own password and enroll TOTP through QR/manual setup before activation.
+2. Add a production email provider for invites and password resets.
+3. Add rate limiting, audit logging, and recovery/lockout policy for login and TOTP attempts.
+4. Replace or harden password hashing for production, preferably with Argon2.
+5. Split stored admin visibility from computed meal orderability if the current force-hide behavior becomes too opaque.
+6. Add pagination controls for admin order and menu-product lists.
+7. Remove the temporary admin bypass before any production deployment.
+8. Add end-to-end tests for admin login, first setup, invite acceptance, menu visibility save/reset, and order management.

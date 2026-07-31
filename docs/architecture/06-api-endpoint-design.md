@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document defines the API design rules for the Food Ordering Kiosk App before public or admin endpoints are implemented.
+This document defines the API design rules for the Food Ordering Kiosk App and records the current public/admin endpoint direction.
 
 ## Main Principles
 
@@ -49,17 +49,30 @@ Use:
 
 Examples:
 
-- `POST /api/v1/admin/auth/invites`
-- `POST /api/v1/admin/auth/invites/:token/accept`
+- `GET /api/v1/admin/auth/bootstrap-status`
+- `POST /api/v1/admin/auth/bootstrap-super-admin`
+- `POST /api/v1/admin/auth/verify-bootstrap-2fa`
+- `POST /api/v1/admin/auth/cancel-bootstrap-setup`
 - `POST /api/v1/admin/auth/login`
-- `POST /api/v1/admin/auth/totp/verify`
-- `POST /api/v1/admin/auth/logout`
+- `POST /api/v1/admin/auth/verify-2fa`
+- `POST /api/v1/admin/auth/confirm-invite`
+- `POST /api/v1/admin/auth/forgot-password`
+- `POST /api/v1/admin/auth/reset-password`
 - `GET /api/v1/admin/auth/me`
+- `POST /api/v1/admin/auth/logout`
+- `GET /api/v1/admin/users`
+- `POST /api/v1/admin/users/invite`
 - `GET /api/v1/admin/restaurants`
 - `GET /api/v1/admin/orders`
 - `GET /api/v1/admin/orders/:orderId`
 - `PATCH /api/v1/admin/orders/:orderId/status`
 - `GET /api/v1/admin/menu-products`
+- `PATCH /api/v1/admin/menu-products/visibility`
+
+Older proposed names that should not be used for the current implementation:
+
+- `POST /api/v1/admin/auth/invites`
+- `POST /api/v1/admin/auth/invites/:token/accept`
 - `PATCH /api/v1/admin/menu-products/:menuProductId/visibility`
 
 Admin endpoints should always require authentication and authorization. Restaurant-scoped admin endpoints must check that the authenticated admin has access to the requested restaurant.
@@ -132,13 +145,13 @@ Use query parameters for read filters.
 Examples:
 
 - `GET /api/v1/kiosk/menus/:menuId/categories?locale=pl`
-- `GET /api/v1/admin/orders?restaurantId=...&status=new&paymentStatus=paid&page=1&pageSize=20`
-- `GET /api/v1/admin/orders?search=K-20260727&page=1&pageSize=20`
+- `GET /api/v1/admin/orders?restaurantId=...&orderStatus=NEW&paymentStatus=PAID&dateFrom=2026-07-30T00:00:00.000Z&dateTo=2026-07-30T23:59:59.999Z`
+- `GET /api/v1/admin/orders?search=K-20260727`
 - `GET /api/v1/admin/menu-products?restaurantId=...&search=fries&page=1&pageSize=20`
 
 Recommended rules:
 
-- pagination is required for admin list endpoints
+- pagination is required for admin list endpoints before production-scale usage
 - search/filter query params should be optional and additive
 - public kiosk menu browsing should avoid unnecessary pagination unless menu size demands it
 
@@ -210,7 +223,7 @@ Admin write endpoints should:
 - validate role access
 - validate restaurant access
 - reject invalid status transitions
-- support super-admin-created invite links instead of emailed passwords
+- support super-admin-created invite links; production should avoid emailed or super-admin-known passwords
 - require mandatory two-factor authentication before issuing a full admin session
 - log important state changes later when audit logging is added
 

@@ -27,13 +27,16 @@ import {
   X,
 } from "lucide-react";
 import { focusRing } from "../../shared/components/IconButton";
+import { summarizeBasketConfiguration } from "../../features/cart/lib/configurationSummary";
 import {
   bootstrapSuperAdmin,
   cancelAdminBootstrapSetup,
   confirmAdminInvite,
   forgotAdminPassword,
   getAdminBootstrapStatus,
+  getAdminOrder,
   inviteAdminUser,
+  listAdminOrders,
   listAdminMenuProducts,
   listAdminRestaurants,
   listAdminUsers,
@@ -41,9 +44,14 @@ import {
   logoutAdmin,
   resetAdminPassword,
   saveAdminMenuVisibility,
+  updateAdminOrderStatus,
   verifyBootstrapTwoFactor,
   verifyAdminTwoFactor,
+  type AdminOrderDetail,
+  type AdminOrderStatus,
   type AdminMenuProductSummary,
+  type AdminOrderSummary,
+  type AdminPaymentStatus,
   type AdminRestaurantSummary,
   type AdminRole,
   type AdminSessionUser,
@@ -58,15 +66,13 @@ type LoginStep = "credentials" | "two-factor";
 type SetupStep = "account" | "two-factor";
 type ShellView = "orders" | "menu" | "admins" | "restaurants" | "settings";
 type Role = AdminRole;
-type OrderStatus = "NEW" | "IN_PROGRESS" | "READY" | "COMPLETED" | "CANCELLED";
-type PaymentStatus =
-  | "PENDING"
-  | "AWAITING_PAYMENT_CONFIRMATION"
-  | "PAID"
-  | "FAILED"
-  | "CANCELLED";
+type OrderStatus = AdminOrderStatus;
+type PaymentStatus = AdminPaymentStatus;
 type ProductType = "ITEM" | "MEAL" | "LARGE_MEAL";
 type TableState = "ready" | "loading" | "error" | "empty";
+
+const canUseTemporaryAdminBypass =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_ADMIN_BYPASS === "true";
 
 interface AdminPanelPageProps {
   onBackToKiosk: () => void;
@@ -92,17 +98,18 @@ interface OrderItem {
 
 interface Payment {
   id: string;
-  provider: "Stripe";
+  provider: "STRIPE";
   sessionId: string;
-  intentId: string;
+  intentId: string | null;
   amountCents: number;
-  currency: "PLN";
+  currency: string;
 }
 
 interface Order {
   id: string;
   orderNumber: string;
   restaurantId: string;
+  restaurantName?: string;
   createdAt: string;
   updatedAt: string;
   orderStatus: OrderStatus;
@@ -110,7 +117,8 @@ interface Order {
   subtotalCents: number;
   totalCents: number;
   items: OrderItem[];
-  payment: Payment;
+  itemCount?: number;
+  payment: Payment | null;
 }
 
 interface MenuProduct {
@@ -147,6 +155,102 @@ const restaurants: Restaurant[] = [
   { id: "airport", name: "Airport Express", location: "Terminal A" },
 ];
 
+const adminPreviewRestaurants: AdminRestaurantSummary[] = restaurants.map(
+  (restaurant) => ({
+    id: restaurant.id,
+    name: restaurant.name,
+    slug: restaurant.id,
+    isActive: true,
+  }),
+);
+
+const adminPreviewMenuProducts: MenuProduct[] = [
+  {
+    id: "mp_classic_burger_meal",
+    productId: "prod_classic_burger_meal",
+    restaurantId: "central",
+    restaurantName: "Central Burger House",
+    name: "Classic Burger Meal",
+    category: "Meals",
+    type: "MEAL",
+    priceCents: 4550,
+    currencyCode: "PLN",
+    visible: true,
+    imageUrl:
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=96&h=96&fit=crop&auto=format",
+  },
+  {
+    id: "mp_classic_burger",
+    productId: "prod_classic_burger",
+    restaurantId: "central",
+    restaurantName: "Central Burger House",
+    name: "Classic Burger",
+    category: "Burgers",
+    type: "ITEM",
+    priceCents: 2990,
+    currencyCode: "PLN",
+    visible: true,
+    imageUrl:
+      "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=96&h=96&fit=crop&auto=format",
+    affectedMeals: 1,
+  },
+  {
+    id: "mp_small_fries",
+    productId: "prod_small_fries",
+    restaurantId: "central",
+    restaurantName: "Central Burger House",
+    name: "Small Fries",
+    category: "Sides",
+    type: "ITEM",
+    priceCents: 900,
+    currencyCode: "PLN",
+    visible: true,
+    imageUrl:
+      "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=96&h=96&fit=crop&auto=format",
+  },
+  {
+    id: "mp_cola",
+    productId: "prod_cola",
+    restaurantId: "central",
+    restaurantName: "Central Burger House",
+    name: "Cola",
+    category: "Drinks",
+    type: "ITEM",
+    priceCents: 800,
+    currencyCode: "PLN",
+    visible: true,
+    imageUrl:
+      "https://images.unsplash.com/photo-1554866585-cd94860890b7?w=96&h=96&fit=crop&auto=format",
+  },
+  {
+    id: "mp_large_burger_meal",
+    productId: "prod_large_burger_meal",
+    restaurantId: "riverside",
+    restaurantName: "Riverside Kiosk",
+    name: "Large Burger Meal",
+    category: "Meals",
+    type: "LARGE_MEAL",
+    priceCents: 6890,
+    currencyCode: "PLN",
+    visible: true,
+    imageUrl:
+      "https://images.unsplash.com/photo-1550547660-d9450f859349?w=96&h=96&fit=crop&auto=format",
+  },
+];
+
+const adminPreviewUsers: AdminUser[] = [
+  {
+    id: "temporary-super-admin",
+    email: "temporary.admin@example.com",
+    name: "Temporary Admin",
+    role: "SUPER_ADMIN",
+    restaurants: ["All restaurants"],
+    twoFactorEnabled: true,
+    status: "active",
+    lastLoginAt: "Temporary session",
+  },
+];
+
 const orders: Order[] = [
   {
     id: "ord_01J7C8K4Z2Y9QW5E1",
@@ -160,7 +264,7 @@ const orders: Order[] = [
     totalCents: 5350,
     payment: {
       id: "pay_01J7C8K4",
-      provider: "Stripe",
+      provider: "STRIPE",
       sessionId: "cs_test_a13f9b",
       intentId: "pi_3A13F9B",
       amountCents: 5350,
@@ -204,7 +308,7 @@ const orders: Order[] = [
     totalCents: 6890,
     payment: {
       id: "pay_01J7C8MV",
-      provider: "Stripe",
+      provider: "STRIPE",
       sessionId: "cs_test_b82c1d",
       intentId: "pi_3B82C1D",
       amountCents: 6890,
@@ -237,7 +341,7 @@ const orders: Order[] = [
     totalCents: 3200,
     payment: {
       id: "pay_01J7C8Q9",
-      provider: "Stripe",
+      provider: "STRIPE",
       sessionId: "cs_test_c77d2e",
       intentId: "pi_3C77D2E",
       amountCents: 3200,
@@ -288,6 +392,17 @@ function formatDateTime(value: string): string {
   }).format(new Date(value));
 }
 
+function toDateFilterIso(value: string, boundary: "start" | "end"): string {
+  if (!value) return "";
+
+  const date = new Date(`${value}T00:00:00`);
+  if (boundary === "end") {
+    date.setHours(23, 59, 59, 999);
+  }
+
+  return date.toISOString();
+}
+
 function restaurantName(restaurantId: string): string {
   return (
     restaurants.find((restaurant) => restaurant.id === restaurantId)?.name ??
@@ -330,6 +445,101 @@ function mapAdminMenuProduct(product: AdminMenuProductSummary): MenuProduct {
   };
 }
 
+function mapAdminOrderSummary(order: AdminOrderSummary): Order {
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    restaurantId: order.restaurantId,
+    restaurantName: order.restaurantName,
+    createdAt: order.createdAt,
+    updatedAt: order.updatedAt,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+    subtotalCents: toCents(order.subtotalAmount),
+    totalCents: toCents(order.totalAmount),
+    items: [],
+    itemCount: order.itemCount,
+    payment: order.payment
+      ? {
+          id: order.payment.id,
+          provider: order.payment.provider,
+          sessionId: order.payment.providerSessionId,
+          intentId: order.payment.providerPaymentIntentId,
+          amountCents: toCents(order.payment.amount),
+          currency: order.payment.currency,
+        }
+      : null,
+  };
+}
+
+function mapAdminOrderDetail(order: AdminOrderDetail): Order {
+  return {
+    ...mapAdminOrderSummary(order),
+    items: order.items.map((item) => ({
+      id: item.id,
+      productId: item.productId,
+      menuProductId: item.menuProductId ?? "",
+      name: item.productName,
+      type: item.productType,
+      unitPriceCents: toCents(item.unitPrice),
+      quantity: item.quantity,
+      lineTotalCents: toCents(item.lineTotal),
+      configuration: formatConfigurationSnapshot(item.configurationSnapshot),
+    })),
+  };
+}
+
+function formatConfigurationSnapshot(snapshot: unknown): string {
+  const summary = summarizeBasketConfiguration(snapshot);
+  const parts = [
+    ...summary.groups.map(
+      (group) => `${group.groupName}: ${group.optionName}`,
+    ),
+    ...summary.modifiers.map((modifier) =>
+      modifier.actionType === "REMOVE"
+        ? `Removed ${modifier.name}`
+        : `${modifier.name} x${modifier.quantity}`,
+    ),
+  ];
+
+  if (parts.length > 0) {
+    return parts.join("; ");
+  }
+
+  if (!snapshot) {
+    return "No configuration";
+  }
+
+  return JSON.stringify(snapshot);
+}
+
+function applyPreviewMealVisibilityRules(products: MenuProduct[]): MenuProduct[] {
+  const classicBurger = products.find(
+    (product) => product.productId === "prod_classic_burger",
+  );
+  const shouldHideClassicMeal = !classicBurger?.visible;
+
+  return products.map((product) => {
+    if (product.productId !== "prod_classic_burger_meal") {
+      return { ...product };
+    }
+
+    if (shouldHideClassicMeal) {
+      return {
+        ...product,
+        visible: false,
+        forcedHiddenReason:
+          "This meal has no visible option in at least one required group.",
+      };
+    }
+
+    return {
+      ...product,
+      forcedHiddenReason: null,
+    };
+  });
+}
+
 function toCents(value: string): number {
   return Math.round(Number(value) * 100);
 }
@@ -352,19 +562,34 @@ export function AdminPanelPage({ onBackToKiosk }: AdminPanelPageProps) {
   const [view, setView] = useState<AdminView>("login");
   const [sessionToken, setSessionToken] = useState("");
   const [adminUser, setAdminUser] = useState<AdminSessionUser | null>(null);
+  const [isTemporaryBypass, setIsTemporaryBypass] = useState(false);
 
   function handleSignedIn(response: AuthenticatedAdminResponse) {
     setSessionToken(response.sessionToken);
     setAdminUser(response.user);
+    setIsTemporaryBypass(false);
+    setView("shell");
+  }
+
+  function handleTemporaryAdminBypass() {
+    setSessionToken("temporary-admin-bypass");
+    setAdminUser({
+      id: "temporary-super-admin",
+      email: "temporary.admin@example.com",
+      role: "SUPER_ADMIN",
+      restaurantIds: restaurants.map((restaurant) => restaurant.id),
+    });
+    setIsTemporaryBypass(true);
     setView("shell");
   }
 
   async function handleLogout() {
-    if (sessionToken) {
+    if (sessionToken && !isTemporaryBypass) {
       await logoutAdmin(sessionToken).catch(() => undefined);
     }
     setSessionToken("");
     setAdminUser(null);
+    setIsTemporaryBypass(false);
     setView("login");
   }
 
@@ -374,6 +599,7 @@ export function AdminPanelPage({ onBackToKiosk }: AdminPanelPageProps) {
         <AdminShell
           sessionToken={sessionToken}
           user={adminUser}
+          isTemporaryBypass={isTemporaryBypass}
           onBackToKiosk={onBackToKiosk}
           onLogout={handleLogout}
         />
@@ -386,6 +612,9 @@ export function AdminPanelPage({ onBackToKiosk }: AdminPanelPageProps) {
       <AdminLogin
         onBackToKiosk={onBackToKiosk}
         onSignedIn={handleSignedIn}
+        onTemporaryAdminBypass={
+          canUseTemporaryAdminBypass ? handleTemporaryAdminBypass : undefined
+        }
       />
     </AdminFrame>
   );
@@ -402,11 +631,13 @@ function AdminFrame({ children }: { children: ReactNode }) {
 interface AdminLoginProps {
   onBackToKiosk: () => void;
   onSignedIn: (response: AuthenticatedAdminResponse) => void;
+  onTemporaryAdminBypass?: () => void;
 }
 
 function AdminLogin({
   onBackToKiosk,
   onSignedIn,
+  onTemporaryAdminBypass,
 }: AdminLoginProps) {
   const urlSearchParams = useMemo(
     () => new URLSearchParams(window.location.search),
@@ -720,6 +951,16 @@ function AdminLogin({
         </div>
 
         <div className="p-8">
+          {onTemporaryAdminBypass ? (
+            <button
+              type="button"
+              onClick={onTemporaryAdminBypass}
+              className={`mb-5 flex min-h-11 w-full items-center justify-center rounded-md border border-amber-400/30 bg-amber-400/10 px-4 text-sm font-semibold text-amber-200 transition hover:bg-amber-400/15 hover:text-amber-100 ${focusRing}`}
+            >
+              Temporary: open admin panel without login
+            </button>
+          ) : null}
+
           {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
           {statusMessage ? (
             <AdminAlert tone="success">{statusMessage}</AdminAlert>
@@ -1042,6 +1283,7 @@ function AdminLogin({
 interface AdminShellProps {
   sessionToken: string;
   user: AdminSessionUser;
+  isTemporaryBypass: boolean;
   onBackToKiosk: () => void;
   onLogout: () => void;
 }
@@ -1049,6 +1291,7 @@ interface AdminShellProps {
 function AdminShell({
   sessionToken,
   user,
+  isTemporaryBypass,
   onBackToKiosk,
   onLogout,
 }: AdminShellProps) {
@@ -1068,11 +1311,22 @@ function AdminShell({
       : restaurants;
 
   useEffect(() => {
+    if (isTemporaryBypass) {
+      void Promise.resolve().then(() => {
+        setShellRestaurants(adminPreviewRestaurants);
+      });
+      return;
+    }
+
     void Promise.resolve().then(async () => {
-      const response = await listAdminRestaurants(sessionToken);
-      setShellRestaurants(response.restaurants);
+      try {
+        const response = await listAdminRestaurants(sessionToken);
+        setShellRestaurants(response.restaurants);
+      } catch {
+        setShellRestaurants([]);
+      }
     });
-  }, [sessionToken]);
+  }, [isTemporaryBypass, sessionToken]);
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -1167,7 +1421,7 @@ function AdminShell({
 
           <div className="ml-auto flex items-center gap-3">
             <Badge tone={role === "SUPER_ADMIN" ? "purple" : "blue"}>
-              {role}
+              {isTemporaryBypass ? "TEMP_ADMIN" : role}
             </Badge>
             <div className="flex items-center gap-2 text-xs">
               <span className="flex size-7 items-center justify-center rounded-full bg-[#4f7ef7]/20 text-[#8fb0ff]">
@@ -1191,8 +1445,10 @@ function AdminShell({
         <section className="min-h-0 flex-1 overflow-auto">
           {view === "orders" ? (
             <OrdersView
+              sessionToken={sessionToken}
               restaurantId={restaurantId}
               globalSearch={globalSearch}
+              isTemporaryBypass={isTemporaryBypass}
             />
           ) : null}
           {view === "menu" ? (
@@ -1201,10 +1457,14 @@ function AdminShell({
               restaurants={shellRestaurants}
               restaurantId={restaurantId}
               globalSearch={globalSearch}
+              isTemporaryBypass={isTemporaryBypass}
             />
           ) : null}
           {view === "admins" ? (
-            <AdminUsersView sessionToken={sessionToken} />
+            <AdminUsersView
+              sessionToken={sessionToken}
+              isTemporaryBypass={isTemporaryBypass}
+            />
           ) : null}
           {view === "restaurants" ? <RestaurantsView /> : null}
           {view === "settings" ? <SettingsView /> : null}
@@ -1215,25 +1475,84 @@ function AdminShell({
 }
 
 function OrdersView({
+  sessionToken,
   restaurantId,
   globalSearch,
+  isTemporaryBypass,
 }: {
+  sessionToken: string;
   restaurantId: string;
   globalSearch: string;
+  isTemporaryBypass: boolean;
 }) {
   const [orderStatus, setOrderStatus] = useState("");
   const [paymentStatus, setPaymentStatus] = useState("");
-  const [tableState, setTableState] = useState<TableState>("ready");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [orderRows, setOrderRows] = useState<Order[]>([]);
+  const [tableState, setTableState] = useState<TableState>("loading");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [updatingOrderId, setUpdatingOrderId] = useState("");
+
+  const loadOrders = useCallback(async () => {
+    setTableState("loading");
+    setErrorMessage("");
+    if (isTemporaryBypass) {
+      setOrderRows(orders);
+      setTableState(orders.length > 0 ? "ready" : "empty");
+      return;
+    }
+
+    try {
+      const response = await listAdminOrders(sessionToken, {
+        restaurantId,
+        orderStatus,
+        paymentStatus,
+        dateFrom: toDateFilterIso(dateFrom, "start"),
+        dateTo: toDateFilterIso(dateTo, "end"),
+        search: globalSearch,
+      });
+      const nextOrders = response.orders.map(mapAdminOrderSummary);
+      setOrderRows(nextOrders);
+      setTableState(nextOrders.length > 0 ? "ready" : "empty");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not load admin orders.",
+      );
+      setTableState("error");
+    }
+  }, [
+    dateFrom,
+    dateTo,
+    globalSearch,
+    isTemporaryBypass,
+    orderStatus,
+    paymentStatus,
+    restaurantId,
+    sessionToken,
+  ]);
+
+  useEffect(() => {
+    void Promise.resolve().then(loadOrders);
+  }, [loadOrders]);
 
   const filtered = useMemo(
     () =>
-      orders.filter((order) => {
+      orderRows.filter((order) => {
         const q = globalSearch.toLowerCase();
         if (restaurantId && order.restaurantId !== restaurantId) return false;
         if (orderStatus && order.orderStatus !== orderStatus) return false;
         if (paymentStatus && order.paymentStatus !== paymentStatus) return false;
+        if (dateFrom && order.createdAt < toDateFilterIso(dateFrom, "start")) {
+          return false;
+        }
+        if (dateTo && order.createdAt > toDateFilterIso(dateTo, "end")) {
+          return false;
+        }
         if (
+          isTemporaryBypass &&
           q &&
           !order.orderNumber.toLowerCase().includes(q) &&
           !order.items.some((item) => item.name.toLowerCase().includes(q))
@@ -1242,18 +1561,90 @@ function OrdersView({
         }
         return true;
       }),
-    [globalSearch, orderStatus, paymentStatus, restaurantId],
+    [
+      dateFrom,
+      dateTo,
+      globalSearch,
+      isTemporaryBypass,
+      orderRows,
+      orderStatus,
+      paymentStatus,
+      restaurantId,
+    ],
   );
+
+  async function openOrderDetail(order: Order) {
+    setErrorMessage("");
+    if (isTemporaryBypass) {
+      setSelectedOrder(order);
+      return;
+    }
+
+    try {
+      const response = await getAdminOrder(sessionToken, order.id);
+      setSelectedOrder(mapAdminOrderDetail(response.order));
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not load order detail.",
+      );
+    }
+  }
+
+  async function handleOrderStatusChange(orderId: string, status: OrderStatus) {
+    setUpdatingOrderId(orderId);
+    setErrorMessage("");
+    setStatusMessage("");
+    if (isTemporaryBypass) {
+      setOrderRows((current) =>
+        current.map((order) =>
+          order.id === orderId ? { ...order, orderStatus: status } : order,
+        ),
+      );
+      setSelectedOrder((current) =>
+        current?.id === orderId ? { ...current, orderStatus: status } : current,
+      );
+      setStatusMessage("Temporary preview order status updated locally.");
+      setUpdatingOrderId("");
+      return;
+    }
+
+    try {
+      const response = await updateAdminOrderStatus(sessionToken, orderId, status);
+      const updatedOrder = mapAdminOrderDetail(response.order);
+      setOrderRows((current) =>
+        current.map((order) =>
+          order.id === orderId
+            ? {
+                ...mapAdminOrderSummary(response.order),
+                items: order.items,
+              }
+            : order,
+        ),
+      );
+      setSelectedOrder(updatedOrder);
+      setStatusMessage("Order status updated.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not update order status.",
+      );
+    } finally {
+      setUpdatingOrderId("");
+    }
+  }
 
   return (
     <div className="flex min-h-full flex-col">
       <ViewHeader
         title="Orders"
-        description={`${filtered.length} of ${orders.length} orders`}
+        description={`${filtered.length} of ${orderRows.length} orders`}
         action={
           <DemoStateControls value={tableState} onChange={setTableState} />
         }
       />
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
+      {statusMessage ? (
+        <AdminAlert tone="success">{statusMessage}</AdminAlert>
+      ) : null}
 
       <div className="flex flex-wrap items-center gap-2 border-b border-(--admin-border) bg-[#182030]/35 px-5 py-3">
         <SlidersHorizontal className="size-4 text-[#6b7694]" />
@@ -1274,19 +1665,29 @@ function OrdersView({
           ))}
         </AdminSelect>
         <input
+          value={dateFrom}
+          onChange={(event) => setDateFrom(event.target.value)}
+          type="date"
           className="h-8 w-28 rounded border border-(--admin-border) bg-[#182030] px-2 text-xs outline-none placeholder:text-[#6b7694]"
           placeholder="From"
+          aria-label="Filter orders from date"
         />
         <input
+          value={dateTo}
+          onChange={(event) => setDateTo(event.target.value)}
+          type="date"
           className="h-8 w-28 rounded border border-(--admin-border) bg-[#182030] px-2 text-xs outline-none placeholder:text-[#6b7694]"
           placeholder="To"
+          aria-label="Filter orders to date"
         />
-        {(orderStatus || paymentStatus) && (
+        {(orderStatus || paymentStatus || dateFrom || dateTo) && (
           <button
             type="button"
             onClick={() => {
               setOrderStatus("");
               setPaymentStatus("");
+              setDateFrom("");
+              setDateTo("");
             }}
             className="text-xs font-semibold text-[#9aaabb] hover:text-white"
           >
@@ -1312,13 +1713,13 @@ function OrdersView({
           {filtered.map((order) => (
             <tr
               key={order.id}
-              onClick={() => setSelectedOrder(order)}
+              onClick={() => void openOrderDetail(order)}
               className="cursor-pointer border-b border-(--admin-border) transition hover:bg-[#1e2840]"
             >
               <Cell mono>{order.orderNumber}</Cell>
-              <Cell>{restaurantName(order.restaurantId)}</Cell>
+              <Cell>{order.restaurantName ?? restaurantName(order.restaurantId)}</Cell>
               <Cell muted>{formatDateTime(order.createdAt)}</Cell>
-              <Cell>{order.items.length}</Cell>
+              <Cell>{order.itemCount ?? order.items.length}</Cell>
               <Cell>
                 <OrderStatusBadge status={order.orderStatus} />
               </Cell>
@@ -1328,7 +1729,7 @@ function OrdersView({
               <Cell strong mono>
                 {formatPrice(order.totalCents)}
               </Cell>
-              <Cell muted>{order.payment.provider}</Cell>
+              <Cell muted>{order.payment?.provider ?? "No payment"}</Cell>
               <Cell>
                 <ChevronRight className="size-4 text-[#6b7694]" />
               </Cell>
@@ -1339,7 +1740,10 @@ function OrdersView({
 
       {selectedOrder ? (
         <OrderDetailModal
+          key={`${selectedOrder.id}:${selectedOrder.orderStatus}`}
           order={selectedOrder}
+          updating={updatingOrderId === selectedOrder.id}
+          onStatusChange={handleOrderStatusChange}
           onClose={() => setSelectedOrder(null)}
         />
       ) : null}
@@ -1349,18 +1753,27 @@ function OrdersView({
 
 function OrderDetailModal({
   order,
+  updating,
+  onStatusChange,
   onClose,
 }: {
   order: Order;
+  updating: boolean;
+  onStatusChange: (orderId: string, status: OrderStatus) => Promise<void>;
   onClose: () => void;
 }) {
+  const [nextStatus, setNextStatus] = useState<OrderStatus>(order.orderStatus);
+
   return (
     <Modal title={`Order ${order.orderNumber}`} onClose={onClose}>
       <div className="grid gap-5 p-5">
         <DetailSection title="Order">
           <Detail label="Order ID" value={order.id} mono />
           <Detail label="Order Number" value={order.orderNumber} mono />
-          <Detail label="Restaurant" value={restaurantName(order.restaurantId)} />
+          <Detail
+            label="Restaurant"
+            value={order.restaurantName ?? restaurantName(order.restaurantId)}
+          />
           <Detail label="Created" value={formatDateTime(order.createdAt)} />
           <Detail label="Updated" value={formatDateTime(order.updatedAt)} />
           <Detail
@@ -1373,19 +1786,53 @@ function OrderDetailModal({
           />
           <Detail label="Subtotal" value={formatPrice(order.subtotalCents)} />
           <Detail label="Total" value={formatPrice(order.totalCents)} strong />
+          <Detail
+            label="Update Status"
+            value={
+              <div className="flex flex-wrap items-center gap-2">
+                <AdminSelect
+                  value={nextStatus}
+                  onChange={(value) => setNextStatus(value as OrderStatus)}
+                >
+                  {Object.entries(orderStatusLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </AdminSelect>
+                <PrimaryButton
+                  type="button"
+                  disabled={updating || nextStatus === order.orderStatus}
+                  onClick={() => void onStatusChange(order.id, nextStatus)}
+                >
+                  {updating ? "Saving..." : "Save status"}
+                </PrimaryButton>
+              </div>
+            }
+          />
         </DetailSection>
 
         <DetailSection title="Payment">
-          <Detail label="Payment ID" value={order.payment.id} mono />
-          <Detail label="Provider" value={order.payment.provider} />
-          <Detail label="Provider Session ID" value={order.payment.sessionId} mono />
-          <Detail
-            label="Payment Intent ID"
-            value={order.payment.intentId}
-            mono
-          />
-          <Detail label="Amount" value={formatPrice(order.payment.amountCents)} />
-          <Detail label="Currency" value={order.payment.currency} mono />
+          {order.payment ? (
+            <>
+              <Detail label="Payment ID" value={order.payment.id} mono />
+              <Detail label="Provider" value={order.payment.provider} />
+              <Detail
+                label="Provider Session ID"
+                value={order.payment.sessionId}
+                mono
+              />
+              <Detail
+                label="Payment Intent ID"
+                value={order.payment.intentId ?? "Not available"}
+                mono
+              />
+              <Detail label="Amount" value={formatPrice(order.payment.amountCents)} />
+              <Detail label="Currency" value={order.payment.currency} mono />
+            </>
+          ) : (
+            <Detail label="Payment" value="No payment record yet" />
+          )}
         </DetailSection>
 
         <DetailSection title={`Items (${order.items.length})`}>
@@ -1431,11 +1878,13 @@ function MenuItemsView({
   restaurants,
   restaurantId,
   globalSearch,
+  isTemporaryBypass,
 }: {
   sessionToken: string;
   restaurants: AdminRestaurantSummary[];
   restaurantId: string;
   globalSearch: string;
+  isTemporaryBypass: boolean;
 }) {
   const [products, setProducts] = useState<MenuProduct[]>([]);
   const [savedProducts, setSavedProducts] = useState<MenuProduct[]>([]);
@@ -1473,6 +1922,16 @@ function MenuItemsView({
   const loadProducts = useCallback(async () => {
     setTableState("loading");
     setErrorMessage("");
+    if (isTemporaryBypass) {
+      const nextProducts = adminPreviewMenuProducts.map((product) => ({
+        ...product,
+      }));
+      setProducts(nextProducts);
+      setSavedProducts(nextProducts);
+      setTableState("ready");
+      return;
+    }
+
     try {
       const response = await listAdminMenuProducts(sessionToken);
       const nextProducts = response.products.map(mapAdminMenuProduct);
@@ -1485,7 +1944,7 @@ function MenuItemsView({
       );
       setTableState("error");
     }
-  }, [sessionToken]);
+  }, [isTemporaryBypass, sessionToken]);
 
   useEffect(() => {
     void Promise.resolve().then(loadProducts);
@@ -1542,6 +2001,15 @@ function MenuItemsView({
     setSaving(true);
     setErrorMessage("");
     setStatusMessage("");
+    if (isTemporaryBypass) {
+      const nextProducts = applyPreviewMealVisibilityRules(products);
+      setProducts(nextProducts);
+      setSavedProducts(nextProducts.map((product) => ({ ...product })));
+      setStatusMessage("Temporary preview changes saved locally.");
+      setSaving(false);
+      return;
+    }
+
     try {
       const response = await saveAdminMenuVisibility(
         sessionToken,
@@ -1731,7 +2199,13 @@ function MenuItemsView({
   );
 }
 
-function AdminUsersView({ sessionToken }: { sessionToken: string }) {
+function AdminUsersView({
+  sessionToken,
+  isTemporaryBypass,
+}: {
+  sessionToken: string;
+  isTemporaryBypass: boolean;
+}) {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [adminRestaurants, setAdminRestaurants] = useState<
@@ -1743,6 +2217,13 @@ function AdminUsersView({ sessionToken }: { sessionToken: string }) {
   const loadAdminData = useCallback(async () => {
     setTableState("loading");
     setErrorMessage("");
+    if (isTemporaryBypass) {
+      setUsers(adminPreviewUsers);
+      setAdminRestaurants(adminPreviewRestaurants);
+      setTableState("ready");
+      return;
+    }
+
     try {
       const [userResponse, restaurantResponse] = await Promise.all([
         listAdminUsers(sessionToken),
@@ -1757,7 +2238,7 @@ function AdminUsersView({ sessionToken }: { sessionToken: string }) {
       );
       setTableState("error");
     }
-  }, [sessionToken]);
+  }, [isTemporaryBypass, sessionToken]);
 
   useEffect(() => {
     void Promise.resolve().then(loadAdminData);
@@ -1768,6 +2249,38 @@ function AdminUsersView({ sessionToken }: { sessionToken: string }) {
     password: string;
     restaurantId: string;
   }): Promise<InviteAdminUserResponse> {
+    if (isTemporaryBypass) {
+      const restaurant = adminPreviewRestaurants.find(
+        (item) => item.id === invite.restaurantId,
+      );
+      const previewUser: AdminUser = {
+        id: `temporary-admin-${users.length + 1}`,
+        email: invite.email,
+        name: invite.email.split("@")[0] || "Invited admin",
+        role: "ADMIN",
+        restaurants: [restaurant?.name ?? "Preview restaurant"],
+        twoFactorEnabled: true,
+        status: "pending",
+        lastLoginAt: "Never",
+      };
+      setUsers((current) => [...current, previewUser]);
+
+      return {
+        inviteId: previewUser.id,
+        email: previewUser.email,
+        role: "ADMIN",
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        invitationUrl: "temporary-preview-invite",
+        twoFactorSetup: {
+          manualEntryKey: "TEMPORARYPREVIEWKEY",
+        },
+        delivery: {
+          channel: "console",
+          previewToken: "temporary-preview-token",
+        },
+      };
+    }
+
     const response = await inviteAdminUser(sessionToken, {
       email: invite.email,
       password: invite.password,

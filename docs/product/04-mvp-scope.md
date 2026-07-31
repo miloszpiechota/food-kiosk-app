@@ -53,6 +53,8 @@ Define the minimum viable product for the Food Ordering Kiosk App so the first i
 - Authentication is required only for administrators accessing the admin panel.
 - Admin self-registration is not part of the normal flow; admins should be invited by a super admin.
 - Admin login requires email, password, and mandatory two-factor authentication.
+- Current implementation note: first super-admin setup has QR/manual TOTP enrollment, but invited admin onboarding still needs the production target where invited workers set their own password and enroll TOTP before activation.
+- Current implementation note: the temporary admin-panel bypass exists only for local frontend work and is not part of the MVP success definition.
 
 ## MVP Success Definition
 The MVP is successful if a customer can place an order from a kiosk without logging in, complete a Stripe test payment flow, and assigned restaurant admins can securely access an admin area to view, search, and manage resulting orders for their restaurants.

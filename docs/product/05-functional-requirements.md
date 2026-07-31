@@ -64,6 +64,7 @@ Define the user-visible and system-visible capabilities required for the MVP of 
 
 ## Notes
 - These requirements describe planned functionality and do not imply current implementation.
+- The temporary admin-panel bypass used for frontend development does not satisfy admin authentication requirements and must not be treated as a production feature.
 - Detailed meal and large-meal behavior is specified in [Meal Builder Requirements](./13-meal-builder-requirements.md).
 - Admin authentication and order-management behavior is specified in [Admin Auth And Order Management](../architecture/12-admin-auth-and-order-management.md).
 - Automated upsell recommendations are intentionally excluded from the current MVP functional scope and should be treated as Later.

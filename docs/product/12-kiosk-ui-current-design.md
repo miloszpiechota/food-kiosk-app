@@ -35,7 +35,12 @@ Not implemented yet:
 - Detailed configuration display in the cart footer
 - Advanced accessibility settings panel
 - Real language switching
-- Admin UI and protected admin workflows
+
+Separate admin UI status:
+
+- The admin panel lives outside the customer kiosk flow and is not described as part of this kiosk design snapshot.
+- The current admin panel includes backend-backed login, first super-admin setup, invite confirmation, password reset, order search/filter/detail/status management, and menu visibility controls.
+- A temporary development-only admin bypass exists for UI work and must be removed or disabled before production.
 
 ## Visual Direction
 The UI uses a neutral restaurant kiosk style that can work for fast food, cafes, bakeries, desserts, drinks, or casual restaurants.

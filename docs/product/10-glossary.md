@@ -73,7 +73,7 @@ A restaurant that owns menus, categories, products, kiosk configuration, and ord
 A company-level administrator who can invite admins, assign restaurant access, and manage platform-level administration.
 
 ## Two-Factor Authentication
-An additional authentication step after email and password. In this project, the planned admin flow uses time-based one-time codes from an authenticator app.
+An additional authentication step after email and password. In this project, the admin flow uses time-based one-time codes from an authenticator app, with QR-code setup and manual-key fallback where setup is shown.
 
 ## Stripe Checkout
 Stripe's hosted payment flow used to handle customer payment in test mode for this project.

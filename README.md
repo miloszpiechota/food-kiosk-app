@@ -4,7 +4,7 @@ Production-style full-stack food ordering kiosk app built with React, TypeScript
 
 ## Status
 
-Customer kiosk MVP flow implemented through Stripe test checkout. Multi-restaurant admin authentication, admin order management, deployment, and final portfolio polish remain in progress.
+Customer kiosk MVP flow implemented through Stripe test checkout. Admin authentication, first super-admin setup, invites, restaurant scoping, menu visibility controls, and backend-backed admin order management are in progress. Deployment and final portfolio polish remain incomplete.
 
 ## Implemented Core Features
 
@@ -15,21 +15,22 @@ Customer kiosk MVP flow implemented through Stripe test checkout. Multi-restaura
 - Verified Stripe webhook payment confirmation
 - Backend basket and order snapshots
 - Meal builder and product personalization
+- Admin auth backend with first super-admin setup, password login, required TOTP challenge, password reset, logout, and session guards
+- Admin panel frontend with login, QR/manual TOTP setup for first super-admin setup, invite confirmation, password reset, temporary dev bypass, and menu visibility save/reset controls
+- Restaurant-scoped admin user and menu-product endpoints
+- Backend-backed admin order search, filters, details, and status updates
+- Kiosk meal filtering when required meal groups have no visible options
 - Accessibility-oriented kiosk UI foundations
 - Automated tests and CI foundation
 - Dockerized local PostgreSQL setup
 
 ## Planned Core Features
 
-- Admin dashboard
-- Multi-restaurant admin access
-- Super-admin invite links
-- Mandatory two-factor authentication
-- Order status management
-- Admin order search and detail views
-- Menu product hide/unhide controls
+- Production email provider for admin invites and password reset
+- Production-grade password hashing migration from the current Node `crypto.pbkdf2` implementation
+- Rate limiting and audit logging for admin auth
 - Accessibility settings
-- Security-focused admin area
+- Remove temporary admin-panel bypass before production use
 - Dev, staging, and production environments
 
 ## Project Structure

@@ -91,6 +91,63 @@ export interface AdminMenuProductSummary {
   forcedHiddenReason: string | null;
 }
 
+export type AdminOrderStatus =
+  | "NEW"
+  | "IN_PROGRESS"
+  | "READY"
+  | "COMPLETED"
+  | "CANCELLED";
+
+export type AdminPaymentStatus =
+  | "PENDING"
+  | "AWAITING_PAYMENT_CONFIRMATION"
+  | "PAID"
+  | "FAILED"
+  | "CANCELLED";
+
+export interface AdminOrderPaymentSummary {
+  id: string;
+  provider: "STRIPE";
+  providerSessionId: string;
+  providerPaymentIntentId: string | null;
+  status: AdminPaymentStatus;
+  amount: string;
+  currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminOrderSummary {
+  id: string;
+  orderNumber: string;
+  restaurantId: string;
+  restaurantName: string;
+  orderStatus: AdminOrderStatus;
+  paymentStatus: AdminPaymentStatus;
+  subtotalAmount: string;
+  totalAmount: string;
+  itemCount: number;
+  payment: AdminOrderPaymentSummary | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AdminOrderItemDetail {
+  id: string;
+  menuProductId: string | null;
+  productId: string;
+  productName: string;
+  productType: "ITEM" | "MEAL" | "LARGE_MEAL";
+  unitPrice: string;
+  quantity: number;
+  lineTotal: string;
+  configurationSnapshot: unknown;
+}
+
+export interface AdminOrderDetail extends AdminOrderSummary {
+  items: AdminOrderItemDetail[];
+}
+
 export async function bootstrapSuperAdmin(input: {
   email: string;
   password: string;
@@ -241,6 +298,53 @@ export async function saveAdminMenuVisibility(
     method: "PATCH",
     token: sessionToken,
     body: JSON.stringify({ changes }),
+  });
+}
+
+export async function listAdminOrders(
+  sessionToken: string,
+  filters: {
+    restaurantId?: string;
+    orderStatus?: string;
+    paymentStatus?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    search?: string;
+  },
+): Promise<{ orders: AdminOrderSummary[] }> {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(filters)) {
+    if (value) {
+      params.set(key, value);
+    }
+  }
+  const query = params.toString();
+
+  return request(`/api/v1/admin/orders${query ? `?${query}` : ""}`, {
+    method: "GET",
+    token: sessionToken,
+  });
+}
+
+export async function getAdminOrder(
+  sessionToken: string,
+  orderId: string,
+): Promise<{ order: AdminOrderDetail }> {
+  return request(`/api/v1/admin/orders/${orderId}`, {
+    method: "GET",
+    token: sessionToken,
+  });
+}
+
+export async function updateAdminOrderStatus(
+  sessionToken: string,
+  orderId: string,
+  status: AdminOrderStatus,
+): Promise<{ order: AdminOrderDetail }> {
+  return request(`/api/v1/admin/orders/${orderId}/status`, {
+    method: "PATCH",
+    token: sessionToken,
+    body: JSON.stringify({ status }),
   });
 }
 

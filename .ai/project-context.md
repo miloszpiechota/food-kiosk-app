@@ -39,6 +39,10 @@ Implemented:
 - Stripe Checkout test-payment slice with checkout session creation and verified webhook payment confirmation
 - Frontend payment result polling after Stripe redirects back to the kiosk
 - Meal builder backend validation, pricing, configuration snapshots, and fingerprint-based basket item merging
+- Admin auth backend with first super-admin bootstrap, QR/manual TOTP setup for first setup, password login plus mandatory TOTP challenge, password reset, invite creation/confirmation, session guards, logout, restaurant listing, admin user listing, and restaurant-scoped menu visibility endpoints
+- Admin panel frontend with backend-backed login, first setup, invite confirmation, password reset, order search/filter/detail/status management, menu visibility save/reset controls, and a temporary dev-only bypass for UI work
+- Backend-backed admin order list, search, filtering, detail, and validated order status management
+- Kiosk catalog filtering that hides meals when a required meal group has no visible menu option
 - Product documentation in `docs/product`
 - Architecture documentation in `docs/architecture`
 - GitHub Actions CI in `.github/workflows/ci.yml`
@@ -46,12 +50,10 @@ Implemented:
 
 Planned or incomplete:
 - Backend-backed edit mode for existing configured basket items
-- Multi-restaurant admin authentication and protected admin workflows
-- Super-admin invite links, TOTP setup, and mandatory two-factor login
-- Admin restaurant-access scoping
-- Admin order list, search, filtering, detail, and order status management
-- Admin menu-product search and hide/unhide flows with meal availability rules
-- Admin UI
+- Production email delivery for admin invites and password reset
+- Production-grade password hashing migration from the current Node `crypto.pbkdf2` implementation
+- Rate limiting and audit logging for admin authentication and authorization events
+- Removal of the temporary admin-panel bypass before production use
 - End-to-end browser tests
 - Accessibility automation
 - Deployment setup and deployment docs
@@ -104,7 +106,7 @@ Use this sequence to keep work small and portfolio-friendly:
 4. Mock menu data - present as Prisma seed data
 5. Kiosk UI screens - implemented for the customer ordering flow
 6. Cart state - implemented through backend basket state and frontend rendering state
-7. Backend API - customer catalog, basket, order, and Stripe payment modules implemented; admin modules planned
+7. Backend API - customer catalog, basket, order, Stripe payment, admin auth, admin menu visibility, and admin order endpoints implemented
 8. PostgreSQL and Prisma - schema, migrations, seed data, and Prisma integration implemented
 9. Tests - partial
 10. Docker and CI/CD - local Postgres and CI started; deployment pipeline planned
