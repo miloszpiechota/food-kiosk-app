@@ -39,8 +39,10 @@ Implemented:
 - Stripe Checkout test-payment slice with checkout session creation and verified webhook payment confirmation
 - Frontend payment result polling after Stripe redirects back to the kiosk
 - Meal builder backend validation, pricing, configuration snapshots, and fingerprint-based basket item merging
-- Admin auth backend with first super-admin bootstrap, QR/manual TOTP setup for first setup, password login plus mandatory TOTP challenge, password reset, invite creation/confirmation, session guards, logout, restaurant listing, admin user listing, and restaurant-scoped menu visibility endpoints
-- Admin panel frontend with backend-backed login, first setup, invite confirmation, password reset, order search/filter/detail/status management, menu visibility save/reset controls, and a temporary dev-only bypass for UI work
+- Admin auth backend with first super-admin bootstrap, QR/manual TOTP setup, invite-based worker password/2FA enrollment, password login plus mandatory TOTP challenge, recovery codes, password reset, rate limiting, audit logs, session guards, logout, restaurant listing, admin user listing, and restaurant-scoped menu visibility endpoints
+- Admin password hashing uses Node `scrypt` for new hashes and still verifies legacy PBKDF2 hashes for migration compatibility
+- Admin panel frontend with backend-backed login, first setup, invite acceptance with password and QR/manual 2FA enrollment, password reset, order search/filter/detail/status management, menu visibility save/reset controls, and a dev-only opt-in bypass for UI work
+- Resend-backed production email delivery option for admin invites and password reset, with console delivery for local development
 - Backend-backed admin order list, search, filtering, detail, and validated order status management
 - Kiosk catalog filtering that hides meals when a required meal group has no visible menu option
 - Product documentation in `docs/product`
@@ -50,10 +52,8 @@ Implemented:
 
 Planned or incomplete:
 - Backend-backed edit mode for existing configured basket items
-- Production email delivery for admin invites and password reset
-- Production-grade password hashing migration from the current Node `crypto.pbkdf2` implementation
-- Rate limiting and audit logging for admin authentication and authorization events
-- Removal of the temporary admin-panel bypass before production use
+- Optional Argon2 password hashing swap if native dependencies are approved for the deployment environment
+- Removal of the temporary admin-panel bypass code during final production polish
 - End-to-end browser tests
 - Accessibility automation
 - Deployment setup and deployment docs

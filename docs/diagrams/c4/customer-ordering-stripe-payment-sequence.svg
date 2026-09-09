@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="2550" viewBox="0 0 1800 2550">
+<defs>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#18324A"/>
+  </marker>
+  <marker id="arrowMuted" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#506070"/>
+  </marker>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.16"/>
+  </filter>
+  <style>
+    .title { font-family: Inter, Arial, sans-serif; font-size: 38px; font-weight: 700; fill: #0F2740; }
+    .subtitle { font-family: Inter, Arial, sans-serif; font-size: 26px; font-weight: 600; fill: #3A5066; }
+    .participant { font-family: Inter, Arial, sans-serif; font-size: 18px; font-weight: 700; fill: #0F2740; }
+    .label { font-family: Inter, Arial, sans-serif; font-size: 16px; fill: #1B2B3A; }
+    .small { font-family: Inter, Arial, sans-serif; font-size: 14px; fill: #425466; }
+    .phase { font-family: Inter, Arial, sans-serif; font-size: 15px; font-weight: 700; fill: #5B3A00; }
+    .note-title { font-family: Inter, Arial, sans-serif; font-size: 15px; font-weight: 700; fill: #5C4300; }
+    .note { font-family: Inter, Arial, sans-serif; font-size: 14px; fill: #4D3C00; }
+  </style>
+</defs>
+<rect x="0" y="0" width="1800" height="2550" fill="#FFFFFF"/>
+
+<text x="900.0" y="65" text-anchor="middle" class="title">Customer Ordering and Stripe Payment</text>
+<text x="900.0" y="112" text-anchor="middle" class="subtitle">Sequence Diagram</text>
+<rect x="35" y="282" width="1730" height="314" rx="18" fill="#F5FAFF" stroke="#E3EAF0"/>
+<text x="55" y="306" class="phase">MENU BROWSING</text>
+<rect x="35" y="635" width="1730" height="376" rx="18" fill="#F7FCF7" stroke="#E3EAF0"/>
+<text x="55" y="659" class="phase">BASKET CREATION</text>
+<rect x="35" y="1050" width="1730" height="500" rx="18" fill="#FFF9F1" stroke="#E3EAF0"/>
+<text x="55" y="1074" class="phase">CHECKOUT</text>
+<rect x="35" y="1582" width="1730" height="557" rx="18" fill="#FBF8FF" stroke="#E3EAF0"/>
+<text x="55" y="1606" class="phase">PAYMENT CONFIRMATION</text>
+<rect x="395" y="1593" width="1260" height="254" rx="14" fill="none" stroke="#8A6BB8" stroke-width="2" stroke-dasharray="8 6"/>
+<rect x="410" y="1580" width="410" height="26" rx="10" fill="#F3ECFF" stroke="#8A6BB8"/>
+<text x="425" y="1598" class="small" style="font-weight:700; fill:#65439A">PAR / ASYNC — redirect and webhook may arrive in either order</text>
+<rect x="25.0" y="165" width="250" height="70" rx="12" fill="#E8F3FF" stroke="#8CB9E8" stroke-width="2" filter="url(#shadow)"/>
+<text x="150" y="207" text-anchor="middle" class="participant">Kiosk Customer</text>
+<line x1="150" y1="235" x2="150" y2="2265" stroke="#6B7785" stroke-width="1.5" stroke-dasharray="8 7"/>
+<rect x="375.0" y="165" width="250" height="70" rx="12" fill="#EAF4FF" stroke="#70A9DF" stroke-width="2" filter="url(#shadow)"/>
+<text x="500" y="207" text-anchor="middle" class="participant">React Web Application</text>
+<line x1="500" y1="235" x2="500" y2="2265" stroke="#6B7785" stroke-width="1.5" stroke-dasharray="8 7"/>
+<rect x="725.0" y="165" width="250" height="70" rx="12" fill="#ECF9F0" stroke="#77B98C" stroke-width="2" filter="url(#shadow)"/>
+<text x="850" y="207" text-anchor="middle" class="participant">NestJS Backend API</text>
+<line x1="850" y1="235" x2="850" y2="2265" stroke="#6B7785" stroke-width="1.5" stroke-dasharray="8 7"/>
+<rect x="1075.0" y="165" width="250" height="70" rx="12" fill="#F1ECFF" stroke="#8D78C7" stroke-width="2" filter="url(#shadow)"/>
+<text x="1200" y="207" text-anchor="middle" class="participant">PostgreSQL Database</text>
+<line x1="1200" y1="235" x2="1200" y2="2265" stroke="#6B7785" stroke-width="1.5" stroke-dasharray="8 7"/>
+<rect x="1425.0" y="165" width="250" height="70" rx="12" fill="#FFF0F4" stroke="#D58AA0" stroke-width="2" filter="url(#shadow)"/>
+<text x="1550" y="207" text-anchor="middle" class="participant">Stripe</text>
+<line x1="1550" y1="235" x2="1550" y2="2265" stroke="#6B7785" stroke-width="1.5" stroke-dasharray="8 7"/>
+<rect x="492" y="354" width="16" height="238" fill="#D9ECFF" stroke="#5B8DB8" stroke-width="1.2"/>
+<rect x="842" y="364" width="16" height="216" fill="#DDF4E4" stroke="#67A37A" stroke-width="1.2"/>
+<rect x="1192" y="426" width="16" height="98" fill="#EEE7FF" stroke="#7D68B5" stroke-width="1.2"/>
+<rect x="492" y="709" width="16" height="296" fill="#D9ECFF" stroke="#5B8DB8" stroke-width="1.2"/>
+<rect x="842" y="717" width="16" height="278" fill="#DDF4E4" stroke="#67A37A" stroke-width="1.2"/>
+<rect x="1192" y="779" width="16" height="160" fill="#EEE7FF" stroke="#7D68B5" stroke-width="1.2"/>
+<rect x="492" y="1124" width="16" height="354" fill="#D9ECFF" stroke="#5B8DB8" stroke-width="1.2"/>
+<rect x="842" y="1132" width="16" height="284" fill="#DDF4E4" stroke="#67A37A" stroke-width="1.2"/>
+<rect x="1192" y="1194" width="16" height="36" fill="#EEE7FF" stroke="#7D68B5" stroke-width="1.2"/>
+<rect x="1542" y="1256" width="16" height="389" fill="#FFE1EA" stroke="#C26B85" stroke-width="1.2"/>
+<rect x="842" y="1671" width="16" height="160" fill="#DDF4E4" stroke="#67A37A" stroke-width="1.2"/>
+<rect x="1192" y="1795" width="16" height="36" fill="#EEE7FF" stroke="#7D68B5" stroke-width="1.2"/>
+<rect x="492" y="1894" width="16" height="230" fill="#D9ECFF" stroke="#5B8DB8" stroke-width="1.2"/>
+<rect x="842" y="1900" width="16" height="160" fill="#DDF4E4" stroke="#67A37A" stroke-width="1.2"/>
+<rect x="1192" y="1962" width="16" height="36" fill="#EEE7FF" stroke="#7D68B5" stroke-width="1.2"/>
+<line x1="158" y1="320" x2="490" y2="320" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="325.0" y="301" text-anchor="middle" class="label">1. Browses the menu and configures a</text>
+<text x="325.0" y="319" text-anchor="middle" class="label">product or meal</text>
+<line x1="508" y1="382" x2="840" y2="382" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="675.0" y="363" text-anchor="middle" class="label">2. Requests the active menu and available</text>
+<text x="675.0" y="381" text-anchor="middle" class="label">products</text>
+<line x1="858" y1="444" x2="1190" y2="444" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1025.0" y="425" text-anchor="middle" class="label">3. Loads menu, availability, products,</text>
+<text x="1025.0" y="443" text-anchor="middle" class="label">groups, and prices</text>
+<line x1="1192" y1="506" x2="860" y2="506" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="1025.0" y="496" text-anchor="middle" class="label">4. Returns menu data</text>
+<line x1="842" y1="568" x2="510" y2="568" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="675.0" y="558" text-anchor="middle" class="label">5. Returns the customer-facing menu</text>
+<line x1="158" y1="673" x2="490" y2="673" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="325.0" y="663" text-anchor="middle" class="label">6. Adds configured product to basket</text>
+<line x1="508" y1="735" x2="840" y2="735" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="675.0" y="716" text-anchor="middle" class="label">7. Submits selected product, groups,</text>
+<text x="675.0" y="734" text-anchor="middle" class="label">modifiers, and quantity</text>
+<line x1="858" y1="797" x2="1190" y2="797" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1025.0" y="778" text-anchor="middle" class="label">8. Loads current configuration and pricing</text>
+<text x="1025.0" y="796" text-anchor="middle" class="label">rules</text>
+<path d="M 850 859 H 945 V 887 H 860" fill="none" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1000" y="845" text-anchor="middle" class="label">9. Validates configuration and calculates</text>
+<text x="1000" y="863" text-anchor="middle" class="label">trusted price</text>
+<line x1="858" y1="921" x2="1190" y2="921" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1025.0" y="902" text-anchor="middle" class="label">10. Stores basket item and configuration</text>
+<text x="1025.0" y="920" text-anchor="middle" class="label">snapshot</text>
+<line x1="842" y1="983" x2="510" y2="983" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="675.0" y="964" text-anchor="middle" class="label">11. Returns updated basket and</text>
+<text x="675.0" y="982" text-anchor="middle" class="label">backend-calculated totals</text>
+<line x1="158" y1="1088" x2="490" y2="1088" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="325.0" y="1078" text-anchor="middle" class="label">12. Selects checkout</text>
+<line x1="508" y1="1150" x2="840" y2="1150" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="675.0" y="1140" text-anchor="middle" class="label">13. Requests order and payment checkout</text>
+<line x1="858" y1="1212" x2="1190" y2="1212" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1025.0" y="1193" text-anchor="middle" class="label">14. Creates order, immutable order-item</text>
+<text x="1025.0" y="1211" text-anchor="middle" class="label">snapshots, and pending payment</text>
+<line x1="858" y1="1274" x2="1540" y2="1274" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1200.0" y="1264" text-anchor="middle" class="label">15. Creates Checkout Session using trusted order total</text>
+<line x1="1542" y1="1336" x2="860" y2="1336" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="1200.0" y="1326" text-anchor="middle" class="label">16. Returns Checkout Session and hosted URL</text>
+<line x1="842" y1="1398" x2="510" y2="1398" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="675.0" y="1388" text-anchor="middle" class="label">17. Returns Stripe Checkout URL</text>
+<line x1="508" y1="1460" x2="1540" y2="1460" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1025.0" y="1450" text-anchor="middle" class="label">18. Redirects customer&#x27;s browser to Stripe Checkout</text>
+<line x1="158" y1="1522" x2="1540" y2="1522" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="850.0" y="1512" text-anchor="middle" class="label">19. Enters test-card details and confirms payment</text>
+<line x1="1542" y1="1627" x2="510" y2="1627" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="1025.0" y="1617" text-anchor="middle" class="label">20. Redirects browser to the payment-result screen</text>
+<line x1="1542" y1="1689" x2="860" y2="1689" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1200.0" y="1679" text-anchor="middle" class="label">21. Sends signed payment webhook event</text>
+<path d="M 850 1751 H 945 V 1779 H 860" fill="none" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1000" y="1746" text-anchor="middle" class="label">22. Verifies Stripe webhook signature</text>
+<line x1="858" y1="1813" x2="1190" y2="1813" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1025.0" y="1794" text-anchor="middle" class="label">23. Updates verified payment and order</text>
+<text x="1025.0" y="1812" text-anchor="middle" class="label">state</text>
+<line x1="508" y1="1918" x2="840" y2="1918" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="675.0" y="1899" text-anchor="middle" class="label">24. Requests current order and payment</text>
+<text x="675.0" y="1917" text-anchor="middle" class="label">status</text>
+<line x1="858" y1="1980" x2="1190" y2="1980" stroke="#18324A" stroke-width="1.8" marker-end="url(#arrow)"/>
+<text x="1025.0" y="1970" text-anchor="middle" class="label">25. Reads verified status</text>
+<line x1="842" y1="2042" x2="510" y2="2042" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="675.0" y="2023" text-anchor="middle" class="label">26. Returns PAID, PENDING, FAILED, or</text>
+<text x="675.0" y="2041" text-anchor="middle" class="label">CANCELLED</text>
+<line x1="492" y1="2104" x2="160" y2="2104" stroke="#506070" stroke-width="1.8" stroke-dasharray="7 5" marker-end="url(#arrowMuted)"/>
+<text x="325.0" y="2094" text-anchor="middle" class="label">27. Displays the payment result</text>
+<rect x="55" y="2295" width="520" height="150" rx="14" fill="#FFF8D9" stroke="#D8BE5C" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="73" y="2325" class="note-title">Card details stay on Stripe</text>
+<text x="73" y="2353" class="note">Card details are entered directly on Stripe&#x27;s hosted page.</text>
+<text x="73" y="2376" class="note">They do not pass through React, NestJS, or PostgreSQL.</text>
+<rect x="640" y="2295" width="520" height="150" rx="14" fill="#FFF8D9" stroke="#D8BE5C" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="658" y="2325" class="note-title">Trusted backend amount</text>
+<text x="658" y="2353" class="note">The Stripe amount comes from the backend-created order,</text>
+<text x="658" y="2376" class="note">not from a value supplied by the browser.</text>
+<rect x="1225" y="2295" width="520" height="150" rx="14" fill="#FFF8D9" stroke="#D8BE5C" stroke-width="1.5" filter="url(#shadow)"/>
+<text x="1243" y="2325" class="note-title">Webhook is authoritative</text>
+<text x="1243" y="2353" class="note">The browser redirect does not confirm payment.</text>
+<text x="1243" y="2376" class="note">Only a verified Stripe webhook confirms the payment state.</text>
+<text x="900.0" y="2495" text-anchor="middle" class="small">Food Ordering Kiosk Platform — customer ordering and Stripe payment flow</text>
+</svg>

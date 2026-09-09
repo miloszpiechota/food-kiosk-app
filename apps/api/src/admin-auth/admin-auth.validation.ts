@@ -6,6 +6,7 @@ const emailPattern =
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const tokenPattern = /^[A-Za-z0-9_-]{32,256}$/;
+const recoveryCodePattern = /^[A-F0-9]{4}-?[A-F0-9]{4}-?[A-F0-9]{4}$/i;
 
 export function normalizeEmail(value: unknown): string {
   if (typeof value !== 'string') {
@@ -73,6 +74,35 @@ export function validateTotpCode(value: unknown): string {
   }
 
   return value.trim();
+}
+
+export function validateSecondFactorCode(value: unknown): string {
+  if (typeof value !== 'string') {
+    throw validationError(
+      'ADMIN_2FA_CODE_INVALID',
+      'A six-digit 2FA code or recovery code is required.',
+    );
+  }
+
+  const code = value.trim();
+  if (/^\d{6}$/.test(code)) {
+    return code;
+  }
+
+  if (recoveryCodePattern.test(code)) {
+    return normalizeRecoveryCode(code);
+  }
+
+  throw validationError(
+    'ADMIN_2FA_CODE_INVALID',
+    'A six-digit 2FA code or recovery code is required.',
+  );
+}
+
+export function normalizeRecoveryCode(value: string): string {
+  const compact = value.replace(/-/g, '').toUpperCase();
+
+  return compact.match(/.{1,4}/g)?.join('-') ?? compact;
 }
 
 export function validateToken(

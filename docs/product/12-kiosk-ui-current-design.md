@@ -39,8 +39,8 @@ Not implemented yet:
 Separate admin UI status:
 
 - The admin panel lives outside the customer kiosk flow and is not described as part of this kiosk design snapshot.
-- The current admin panel includes backend-backed login, first super-admin setup, invite confirmation, password reset, order search/filter/detail/status management, and menu visibility controls.
-- A temporary development-only admin bypass exists for UI work and must be removed or disabled before production.
+- The current admin panel includes backend-backed login, first super-admin setup, invited-admin password/2FA enrollment, password reset, order search/filter/detail/status management, and menu visibility controls.
+- A temporary development-only admin bypass exists for UI work, is opt-in during development, and must be removed during final production polish.
 
 ## Visual Direction
 The UI uses a neutral restaurant kiosk style that can work for fast food, cafes, bakeries, desserts, drinks, or casual restaurants.

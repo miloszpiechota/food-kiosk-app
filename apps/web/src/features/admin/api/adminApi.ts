@@ -14,6 +14,7 @@ export interface AuthenticatedAdminResponse {
   sessionToken: string;
   expiresAt: string;
   user: AdminSessionUser;
+  recoveryCodes?: string[];
 }
 
 export interface MfaRequiredResponse {
@@ -66,12 +67,20 @@ export interface InviteAdminUserResponse {
   role: AdminRole;
   expiresAt: string;
   invitationUrl: string;
+  delivery: {
+    channel: "console" | "resend";
+    previewToken?: string;
+    providerMessageId?: string;
+  };
+}
+
+export interface SetupAdminInviteResponse {
+  user: AdminUserSummary;
+  setupToken: string;
+  expiresAt: string;
   twoFactorSetup: {
     manualEntryKey: string;
-  };
-  delivery: {
-    channel: "console";
-    previewToken?: string;
+    provisioningUri: string;
   };
 }
 
@@ -206,20 +215,32 @@ export async function verifyAdminTwoFactor(input: {
   });
 }
 
-export async function confirmAdminInvite(inviteToken: string): Promise<{
-  user: AdminUserSummary;
-}> {
-  return request<{ user: AdminUserSummary }>("/api/v1/admin/auth/confirm-invite", {
+export async function setupAdminInvite(input: {
+  inviteToken: string;
+  password: string;
+}): Promise<SetupAdminInviteResponse> {
+  return request<SetupAdminInviteResponse>("/api/v1/admin/auth/setup-invite", {
     method: "POST",
-    body: JSON.stringify({ inviteToken }),
+    body: JSON.stringify(input),
+  });
+}
+
+export async function verifyAdminInviteTwoFactor(input: {
+  setupToken: string;
+  code: string;
+}): Promise<AuthenticatedAdminResponse> {
+  return request<AuthenticatedAdminResponse>("/api/v1/admin/auth/verify-invite-2fa", {
+    method: "POST",
+    body: JSON.stringify(input),
   });
 }
 
 export async function forgotAdminPassword(email: string): Promise<{
   accepted: true;
   delivery: {
-    channel: "console";
+    channel: "console" | "resend";
     previewToken?: string;
+    providerMessageId?: string;
   };
 }> {
   return request("/api/v1/admin/auth/forgot-password", {
@@ -238,6 +259,20 @@ export async function resetAdminPassword(input: {
   });
 }
 
+export async function regenerateAdminRecoveryCodes(
+  sessionToken: string,
+  input: {
+    password: string;
+    code: string;
+  },
+): Promise<{ recoveryCodes: string[] }> {
+  return request("/api/v1/admin/auth/recovery-codes/regenerate", {
+    method: "POST",
+    token: sessionToken,
+    body: JSON.stringify(input),
+  });
+}
+
 export async function listAdminUsers(sessionToken: string): Promise<{
   users: AdminUserSummary[];
 }> {
@@ -251,7 +286,6 @@ export async function inviteAdminUser(
   sessionToken: string,
   input: {
     email: string;
-    password: string;
     restaurantIds: string[];
   },
 ): Promise<InviteAdminUserResponse> {

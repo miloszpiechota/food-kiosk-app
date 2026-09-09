@@ -694,8 +694,8 @@ classDiagram
 - Admin access should be invite-based. Do not email raw passwords.
 - Admin login requires email, password, and mandatory TOTP verification before a full session is issued.
 - TOTP setup uses a QR code with a manual authenticator key fallback for first super-admin setup.
-- The current invite implementation creates inactive admin users with an initial password set by the super admin; production should move invited users to a self-set-password flow.
-- Temporary admin-panel bypass behavior is development-only and is not part of the production domain model.
+- The current invite implementation lets invited admins set their own password and enroll TOTP before activation.
+- Temporary admin-panel bypass behavior is development-only, opt-in, and is not part of the production domain model.
 - Multilingual kiosk support is easier to scale if translatable catalog fields are stored in dedicated translation tables instead of hardcoding one language per row.
 - Customer language choice is primarily a kiosk session concern rather than a core business entity, and it should persist through the active ordering flow before resetting to a default state for the next customer.
 

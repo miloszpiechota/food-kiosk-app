@@ -38,13 +38,23 @@ export interface ResetPasswordRequest {
   password?: string;
 }
 
-export interface ConfirmInviteRequest {
+export interface RegenerateRecoveryCodesRequest {
+  password?: string;
+  code?: string;
+}
+
+export interface SetupInviteRequest {
   inviteToken?: string;
+  password?: string;
+}
+
+export interface VerifyInviteTwoFactorRequest {
+  setupToken?: string;
+  code?: string;
 }
 
 export interface InviteAdminUserRequest {
   email?: string;
-  password?: string;
   role?: AdminRole;
   restaurantIds?: string[];
 }
@@ -83,6 +93,7 @@ export interface AuthenticatedAdminResponse {
   sessionToken: string;
   expiresAt: string;
   user: AdminSessionUser;
+  recoveryCodes?: string[];
 }
 
 export interface MfaRequiredResponse {
@@ -113,29 +124,38 @@ export interface InviteAdminUserResponse {
   role: AdminRole;
   expiresAt: string;
   invitationUrl: string;
-  twoFactorSetup: {
-    manualEntryKey: string;
-  };
   delivery: {
-    channel: 'console';
+    channel: 'console' | 'resend';
     previewToken?: string;
+    providerMessageId?: string;
   };
 }
 
-export interface ConfirmInviteResponse {
+export interface SetupInviteResponse {
   user: AdminUserSummary;
+  setupToken: string;
+  expiresAt: string;
+  twoFactorSetup: {
+    manualEntryKey: string;
+    provisioningUri: string;
+  };
 }
 
 export interface ForgotPasswordResponse {
   accepted: true;
   delivery: {
-    channel: 'console';
+    channel: 'console' | 'resend';
     previewToken?: string;
+    providerMessageId?: string;
   };
 }
 
 export interface ResetPasswordResponse {
   passwordReset: true;
+}
+
+export interface RegenerateRecoveryCodesResponse {
+  recoveryCodes: string[];
 }
 
 export interface LogoutResponse {

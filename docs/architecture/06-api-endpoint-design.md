@@ -55,7 +55,8 @@ Examples:
 - `POST /api/v1/admin/auth/cancel-bootstrap-setup`
 - `POST /api/v1/admin/auth/login`
 - `POST /api/v1/admin/auth/verify-2fa`
-- `POST /api/v1/admin/auth/confirm-invite`
+- `POST /api/v1/admin/auth/setup-invite`
+- `POST /api/v1/admin/auth/verify-invite-2fa`
 - `POST /api/v1/admin/auth/forgot-password`
 - `POST /api/v1/admin/auth/reset-password`
 - `GET /api/v1/admin/auth/me`
@@ -225,7 +226,7 @@ Admin write endpoints should:
 - reject invalid status transitions
 - support super-admin-created invite links; production should avoid emailed or super-admin-known passwords
 - require mandatory two-factor authentication before issuing a full admin session
-- log important state changes later when audit logging is added
+- log important state changes to admin audit logs
 
 ### Admin Order Reads
 

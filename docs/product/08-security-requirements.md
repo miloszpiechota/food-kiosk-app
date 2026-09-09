@@ -61,5 +61,5 @@ Define the baseline security expectations for the Food Ordering Kiosk App MVP, w
 ## Notes
 - This document defines baseline product security expectations and does not claim that any of them are already implemented.
 - Admin invite and login screens must remain clearly separated from the customer ordering journey.
-- The current admin panel includes a temporary dev-only bypass for UI work. It is not production auth and must be removed or kept disabled outside local development.
+- The current admin panel includes a temporary dev-only bypass for UI work. It is opt-in during development, cannot be enabled by a production build flag alone, and must be removed during final production polish.
 - Detailed admin auth flow is documented in [Admin Auth And Order Management](../architecture/12-admin-auth-and-order-management.md).

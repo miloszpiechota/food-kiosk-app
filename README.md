@@ -15,8 +15,10 @@ Customer kiosk MVP flow implemented through Stripe test checkout. Admin authenti
 - Verified Stripe webhook payment confirmation
 - Backend basket and order snapshots
 - Meal builder and product personalization
-- Admin auth backend with first super-admin setup, password login, required TOTP challenge, password reset, logout, and session guards
-- Admin panel frontend with login, QR/manual TOTP setup for first super-admin setup, invite confirmation, password reset, temporary dev bypass, and menu visibility save/reset controls
+- Admin auth backend with first super-admin setup, invite-based worker password/2FA enrollment, password login, required TOTP challenge, recovery codes, password reset, rate limiting, audit logs, logout, and session guards
+- Memory-hard `scrypt` admin password hashing with legacy PBKDF2 verification for existing hashes
+- Admin panel frontend with login, QR/manual TOTP setup for first super-admin and invited admins, password reset, recovery-code regeneration, dev-only opt-in bypass, and menu visibility save/reset controls
+- Resend-backed production email delivery option for admin invites and password reset, with console delivery for local development
 - Restaurant-scoped admin user and menu-product endpoints
 - Backend-backed admin order search, filters, details, and status updates
 - Kiosk meal filtering when required meal groups have no visible options
@@ -26,11 +28,9 @@ Customer kiosk MVP flow implemented through Stripe test checkout. Admin authenti
 
 ## Planned Core Features
 
-- Production email provider for admin invites and password reset
-- Production-grade password hashing migration from the current Node `crypto.pbkdf2` implementation
-- Rate limiting and audit logging for admin auth
+- Optional Argon2 password hashing swap if native dependencies are approved for the deployment environment
 - Accessibility settings
-- Remove temporary admin-panel bypass before production use
+- Remove temporary admin-panel bypass code during final production polish
 - Dev, staging, and production environments
 
 ## Project Structure

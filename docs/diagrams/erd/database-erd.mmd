@@ -1,0 +1,502 @@
+erDiagram
+
+  "Restaurant" {
+    String id "PK"
+    String name 
+    String slug "UK"
+    String timezone 
+    String defaultLocale 
+    String currencyCode 
+    Boolean isActive 
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "Menu" {
+    String id "PK"
+    String restaurantId "IDX"
+    String code "IDX"
+    String name 
+    String description "nullable"
+    Int sortOrder "IDX"
+    Boolean isActive "IDX"
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "MenuTranslation" {
+    String id "PK"
+    String menuId "IDX"
+    String locale "IDX"
+    String name 
+    String description "nullable"
+    }
+  
+
+  "Category" {
+    String id "PK"
+    String restaurantId "IDX"
+    String code "IDX"
+    String name 
+    String description "nullable"
+    Int sortOrder "IDX"
+    Boolean isActive "IDX"
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "CategoryTranslation" {
+    String id "PK"
+    String categoryId "IDX"
+    String locale "IDX"
+    String name 
+    String description "nullable"
+    }
+  
+
+  "Product" {
+    String id "PK"
+    String restaurantId "IDX"
+    ProductType type "IDX"
+    String sku "IDX"
+    String name 
+    String description "nullable"
+    ProductLabel label "nullable"
+    String regularMealId "nullable UK"
+    Decimal basePrice 
+    String imageUrl "nullable"
+    Boolean isAvailable "IDX"
+    Boolean isStandaloneOrderable 
+    Boolean canBeMealOption 
+    Int sortOrder 
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "ProductTranslation" {
+    String id "PK"
+    String productId "IDX"
+    String locale "IDX"
+    String name 
+    String description "nullable"
+    }
+  
+
+  "MenuCategory" {
+    String id "PK"
+    String menuId "IDX"
+    String categoryId "IDX"
+    Int sortOrder "IDX"
+    Boolean isVisible "IDX"
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "MenuProduct" {
+    String id "PK"
+    String menuCategoryId "IDX"
+    String productId "IDX"
+    Decimal menuPrice "nullable"
+    Int sortOrder "IDX"
+    Boolean isVisible "IDX"
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "MenuAvailabilityRule" {
+    String id "PK"
+    String menuId "IDX"
+    DateTime startDate "nullable"
+    DateTime endDate "nullable"
+    Int daysOfWeek 
+    Int startMinuteOfDay 
+    Int endMinuteOfDay 
+    Boolean isActive "IDX"
+    }
+  
+
+  "MenuAvailabilityException" {
+    String id "PK"
+    String menuId "IDX"
+    DateTime startAt 
+    DateTime endAt 
+    AvailabilityOverrideType overrideType 
+    Boolean isClosed 
+    String reason "nullable"
+    Boolean isActive "IDX"
+    }
+  
+
+  "MenuCategoryAvailabilityRule" {
+    String id "PK"
+    String menuCategoryId "IDX"
+    DateTime startDate "nullable"
+    DateTime endDate "nullable"
+    Int daysOfWeek 
+    Int startMinuteOfDay 
+    Int endMinuteOfDay 
+    Boolean isActive "IDX"
+    }
+  
+
+  "MenuCategoryAvailabilityException" {
+    String id "PK"
+    String menuCategoryId "IDX"
+    DateTime startAt 
+    DateTime endAt 
+    AvailabilityOverrideType overrideType 
+    Boolean isClosed 
+    String reason "nullable"
+    Boolean isActive "IDX"
+    }
+  
+
+  "MenuProductAvailabilityRule" {
+    String id "PK"
+    String menuProductId "IDX"
+    DateTime startDate "nullable"
+    DateTime endDate "nullable"
+    Int daysOfWeek 
+    Int startMinuteOfDay 
+    Int endMinuteOfDay 
+    Boolean isActive "IDX"
+    }
+  
+
+  "MenuProductAvailabilityException" {
+    String id "PK"
+    String menuProductId "IDX"
+    DateTime startAt 
+    DateTime endAt 
+    AvailabilityOverrideType overrideType 
+    Boolean isClosed 
+    String reason "nullable"
+    Boolean isActive "IDX"
+    }
+  
+
+  "ProductGroupTemplate" {
+    String id "PK"
+    String code "UK"
+    String name 
+    Int defaultMinSelections 
+    Int defaultMaxSelections 
+    SelectionMode defaultSelectionMode 
+    Boolean isActive 
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "ProductGroupTemplateTranslation" {
+    String id "PK"
+    String productGroupTemplateId "IDX"
+    String locale "IDX"
+    String name 
+    }
+  
+
+  "ProductGroup" {
+    String id "PK"
+    String productId "IDX"
+    String productGroupTemplateId 
+    String nameOverride "nullable"
+    Int minSelections 
+    Int maxSelections 
+    SelectionMode selectionMode 
+    Int sortOrder "IDX"
+    Boolean isRequired 
+    }
+  
+
+  "ProductGroupOption" {
+    String id "PK"
+    String productGroupId "IDX"
+    String productId "IDX"
+    Decimal priceAdjustment 
+    Int sortOrder "IDX"
+    Boolean isAvailable "IDX"
+    }
+  
+
+  "Ingredient" {
+    String id "PK"
+    String code "UK"
+    String name 
+    String description "nullable"
+    Boolean isActive 
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "IngredientTranslation" {
+    String id "PK"
+    String ingredientId "IDX"
+    String locale "IDX"
+    String name 
+    String description "nullable"
+    }
+  
+
+  "ProductIngredient" {
+    String id "PK"
+    String productId "IDX"
+    String ingredientId "IDX"
+    Int defaultQuantity 
+    Boolean isDefaultIncluded 
+    Boolean isRemovable 
+    Decimal removePriceAdjustment 
+    Boolean allowExtra 
+    Decimal extraUnitPrice 
+    Int maxExtraQuantity 
+    Int sortOrder "IDX"
+    Boolean isAvailable "IDX"
+    }
+  
+
+  "ModifierGroup" {
+    String id "PK"
+    String productId "IDX"
+    String name 
+    ModifierActionType actionType 
+    SelectionMode selectionType 
+    Int minSelections 
+    Int maxSelections 
+    Boolean allowQuantity 
+    Int sortOrder "IDX"
+    Boolean isRequired 
+    }
+  
+
+  "ModifierOption" {
+    String id "PK"
+    String modifierGroupId "IDX"
+    String ingredientId "nullable"
+    String productIngredientId "nullable"
+    Decimal priceAdjustment 
+    Int maxQuantity 
+    Int sortOrder "IDX"
+    Boolean isAvailable "IDX"
+    }
+  
+
+  "Basket" {
+    String id "PK"
+    String sessionId "IDX"
+    BasketStatus status "IDX"
+    Decimal subtotalAmount 
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "BasketItem" {
+    String id "PK"
+    String basketId "IDX"
+    String menuProductId "IDX"
+    String productId "IDX"
+    String productNameSnapshot 
+    Int quantity 
+    Decimal unitPrice 
+    Decimal lineTotal 
+    String configurationFingerprint "IDX"
+    Json configurationSnapshot 
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "Order" {
+    String id "PK"
+    String restaurantId "IDX"
+    String orderNumber "UK"
+    OrderStatus status "IDX"
+    PaymentStatus paymentStatus "IDX"
+    Decimal subtotalAmount 
+    Decimal totalAmount 
+    DateTime createdAt "IDX"
+    DateTime updatedAt 
+    }
+  
+
+  "OrderItem" {
+    String id "PK"
+    String orderId "IDX"
+    String menuProductId "nullable IDX"
+    String productId "IDX"
+    String productName 
+    ProductType productType 
+    Decimal unitPrice 
+    Int quantity 
+    Decimal lineTotal 
+    Json configurationSnapshot 
+    }
+  
+
+  "Payment" {
+    String id "PK"
+    String orderId "UK"
+    PaymentProvider provider 
+    String providerSessionId "UK"
+    String providerPaymentIntentId "nullable"
+    PaymentStatus status 
+    Decimal amount 
+    String currency 
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "AdminUser" {
+    String id "PK"
+    String email "UK"
+    String passwordHash 
+    AdminRole role 
+    String twoFactorSecret "nullable"
+    Boolean twoFactorEnabled 
+    Boolean isActive 
+    Int failedLoginCount 
+    DateTime lockedUntil "nullable"
+    DateTime lastLoginAt "nullable"
+    DateTime createdAt 
+    DateTime updatedAt 
+    }
+  
+
+  "AdminRestaurantAccess" {
+    String id "PK"
+    String adminUserId "IDX"
+    String restaurantId "IDX"
+    DateTime createdAt 
+    }
+  
+
+  "AdminInvite" {
+    String id "PK"
+    String email "IDX"
+    AdminRole role 
+    String restaurantId "nullable IDX"
+    String tokenHash "UK"
+    DateTime expiresAt "IDX"
+    DateTime acceptedAt "nullable IDX"
+    String createdById "IDX"
+    DateTime createdAt 
+    }
+  
+
+  "AdminInviteRestaurantAccess" {
+    String id "PK"
+    String adminInviteId "IDX"
+    String restaurantId "IDX"
+    DateTime createdAt 
+    }
+  
+
+  "AdminLoginChallenge" {
+    String id "PK"
+    String adminUserId "IDX"
+    String tokenHash "UK"
+    AdminLoginChallengeType challengeType 
+    Int attemptCount 
+    DateTime expiresAt "IDX"
+    DateTime consumedAt "nullable IDX"
+    DateTime createdAt 
+    }
+  
+
+  "AdminPasswordResetToken" {
+    String id "PK"
+    String adminUserId "IDX"
+    String tokenHash "UK"
+    DateTime expiresAt "IDX"
+    DateTime consumedAt "nullable IDX"
+    DateTime createdAt 
+    }
+  
+
+  "AdminRecoveryCode" {
+    String id "PK"
+    String adminUserId "IDX"
+    String codeHash "UK"
+    DateTime consumedAt "nullable IDX"
+    DateTime createdAt 
+    }
+  
+
+  "AdminSession" {
+    String id "PK"
+    String adminUserId "IDX"
+    String tokenId "UK"
+    String tokenHash "UK"
+    DateTime expiresAt "IDX"
+    DateTime createdAt 
+    DateTime revokedAt "nullable IDX"
+    }
+  
+
+  "AdminAuditLog" {
+    String id "PK"
+    String actorAdminUserId "nullable IDX"
+    String action "IDX"
+    String result 
+    String targetType "nullable"
+    String targetId "nullable"
+    Json metadata "nullable"
+    DateTime createdAt "IDX"
+    }
+  
+    "Menu" }o--|| "Restaurant" : "restaurant"
+    "MenuTranslation" }o--|| "Menu" : "menu"
+    "Category" }o--|| "Restaurant" : "restaurant"
+    "CategoryTranslation" }o--|| "Category" : "category"
+    "Product" }o--|| "Restaurant" : "restaurant"
+    "Product" |o--|o "Product" : "regularMeal"
+    "ProductTranslation" }o--|| "Product" : "product"
+    "MenuCategory" }o--|| "Menu" : "menu"
+    "MenuCategory" }o--|| "Category" : "category"
+    "MenuProduct" }o--|| "MenuCategory" : "menuCategory"
+    "MenuProduct" }o--|| "Product" : "product"
+    "MenuAvailabilityRule" }o--|| "Menu" : "menu"
+    "MenuAvailabilityException" }o--|| "Menu" : "menu"
+    "MenuCategoryAvailabilityRule" }o--|| "MenuCategory" : "menuCategory"
+    "MenuCategoryAvailabilityException" }o--|| "MenuCategory" : "menuCategory"
+    "MenuProductAvailabilityRule" }o--|| "MenuProduct" : "menuProduct"
+    "MenuProductAvailabilityException" }o--|| "MenuProduct" : "menuProduct"
+    "ProductGroupTemplateTranslation" }o--|| "ProductGroupTemplate" : "productGroupTemplate"
+    "ProductGroup" }o--|| "Product" : "product"
+    "ProductGroup" }o--|| "ProductGroupTemplate" : "productGroupTemplate"
+    "ProductGroupOption" }o--|| "ProductGroup" : "productGroup"
+    "ProductGroupOption" }o--|| "Product" : "product"
+    "IngredientTranslation" }o--|| "Ingredient" : "ingredient"
+    "ProductIngredient" }o--|| "Product" : "product"
+    "ProductIngredient" }o--|| "Ingredient" : "ingredient"
+    "ModifierGroup" }o--|| "Product" : "product"
+    "ModifierOption" }o--|| "ModifierGroup" : "modifierGroup"
+    "ModifierOption" }o--|o "Ingredient" : "ingredient"
+    "ModifierOption" }o--|o "ProductIngredient" : "productIngredient"
+    "BasketItem" }o--|| "Basket" : "basket"
+    "BasketItem" }o--|| "MenuProduct" : "menuProduct"
+    "BasketItem" }o--|| "Product" : "product"
+    "Order" }o--|| "Restaurant" : "restaurant"
+    "OrderItem" }o--|| "Order" : "order"
+    "OrderItem" }o--|o "MenuProduct" : "menuProduct"
+    "OrderItem" }o--|| "Product" : "product"
+    "Payment" |o--|| "Order" : "order"
+    "AdminRestaurantAccess" }o--|| "AdminUser" : "adminUser"
+    "AdminRestaurantAccess" }o--|| "Restaurant" : "restaurant"
+    "AdminInvite" }o--|o "Restaurant" : "restaurant"
+    "AdminInvite" }o--|| "AdminUser" : "createdBy"
+    "AdminInviteRestaurantAccess" }o--|| "AdminInvite" : "adminInvite"
+    "AdminInviteRestaurantAccess" }o--|| "Restaurant" : "restaurant"
+    "AdminLoginChallenge" }o--|| "AdminUser" : "adminUser"
+    "AdminPasswordResetToken" }o--|| "AdminUser" : "adminUser"
+    "AdminRecoveryCode" }o--|| "AdminUser" : "adminUser"
+    "AdminSession" }o--|| "AdminUser" : "adminUser"
+    "AdminAuditLog" }o--|o "AdminUser" : "actor"

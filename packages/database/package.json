@@ -23,6 +23,7 @@
     "@prisma/client": "^6.19.3"
   },
   "devDependencies": {
-    "prisma": "^6.19.3"
+    "prisma": "^6.19.3",
+    "prisma-erd-generator": "^3.2.1"
   }
 }

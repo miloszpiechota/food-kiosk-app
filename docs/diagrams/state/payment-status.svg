@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1500" viewBox="0 0 2000 1500">
+<defs>
+  <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#263746"/>
+  </marker>
+  <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#2D8A4E"/>
+  </marker>
+  <marker id="arrowOrange" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#C96A24"/>
+  </marker>
+  <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+    <path d="M0,0 L0,6 L9,3 z" fill="#C63B45"/>
+  </marker>
+  <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+    <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.13"/>
+  </filter>
+  <style>
+    .title { font-family: Inter, Arial, sans-serif; font-size: 40px; font-weight: 700; fill: #10283F; }
+    .subtitle { font-family: Inter, Arial, sans-serif; font-size: 28px; font-weight: 600; fill: #40556A; }
+    .state-name { font-family: Inter, Arial, sans-serif; font-size: 22px; font-weight: 700; fill: #142536; }
+    .state-desc { font-family: Inter, Arial, sans-serif; font-size: 14px; fill: #314252; }
+    .terminal { font-family: Inter, Arial, sans-serif; font-size: 13px; font-weight: 700; fill: #5A6670; }
+    .edge-label { font-family: Inter, Arial, sans-serif; font-size: 15px; fill: #243746; }
+    .edge-small { font-family: Inter, Arial, sans-serif; font-size: 14px; fill: #243746; }
+    .note-title { font-family: Inter, Arial, sans-serif; font-size: 16px; font-weight: 700; fill: #534300; }
+    .note { font-family: Inter, Arial, sans-serif; font-size: 14px; fill: #4C420D; }
+    .tech { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 14px; fill: #18324A; }
+  </style>
+</defs>
+<rect x="0" y="0" width="2000" height="1500" fill="#FFFFFF"/>
+
+<text x="1000" y="60" text-anchor="middle" class="title">Stripe Payment Lifecycle</text>
+<text x="1000" y="104" text-anchor="middle" class="subtitle">State Diagram</text>
+<circle cx="80" cy="370" r="13" fill="#1F2933"/>
+<line x1="93" y1="370" x2="210" y2="370" stroke="#263746" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="145" y="355" text-anchor="middle" class="edge-label">Order created</text>
+<text x="80" y="408" text-anchor="middle" class="terminal">Start</text>
+<rect x="220" y="300" width="300" height="140" rx="18" fill="#F1F3F5" stroke="#7A8288" stroke-width="2.4" filter="url(#shadow)"/>
+<text x="370.0" y="334" text-anchor="middle" class="state-name">PENDING</text>
+<text x="370.0" y="363" text-anchor="middle" class="state-desc">The order exists, but a Stripe Checkout Session</text>
+<text x="370.0" y="384" text-anchor="middle" class="state-desc">has not been created yet.</text>
+<rect x="700" y="285" width="430" height="170" rx="18" fill="#E8F3FF" stroke="#357ABD" stroke-width="2.4" filter="url(#shadow)"/>
+<text x="915.0" y="319" text-anchor="middle" class="state-name">AWAITING_PAYMENT_CONFIRMATION</text>
+<text x="915.0" y="348" text-anchor="middle" class="state-desc">A Stripe Checkout Session exists and the system</text>
+<text x="915.0" y="369" text-anchor="middle" class="state-desc">is waiting for a verified Stripe webhook.</text>
+<text x="915.0" y="390" text-anchor="middle" class="state-desc">Stripe success redirect does not change this state.</text>
+<rect x="1450" y="170" width="300" height="140" rx="18" fill="#E7F7EC" stroke="#2D8A4E" stroke-width="2.4" filter="url(#shadow)"/>
+<text x="1600.0" y="204" text-anchor="middle" class="state-name">PAID</text>
+<text x="1600.0" y="233" text-anchor="middle" class="state-desc">A verified Stripe webhook confirmed</text>
+<text x="1600.0" y="254" text-anchor="middle" class="state-desc">successful payment.</text>
+<text x="1600.0" y="275" text-anchor="middle" class="terminal">Terminal state</text>
+<rect x="1260" y="560" width="300" height="140" rx="18" fill="#FFF0E8" stroke="#C96A24" stroke-width="2.4" filter="url(#shadow)"/>
+<text x="1410.0" y="594" text-anchor="middle" class="state-name">FAILED</text>
+<text x="1410.0" y="623" text-anchor="middle" class="state-desc">A verified Stripe asynchronous-payment</text>
+<text x="1410.0" y="644" text-anchor="middle" class="state-desc">event reported that payment failed.</text>
+<rect x="1260" y="790" width="300" height="140" rx="18" fill="#FDEBEC" stroke="#C63B45" stroke-width="2.4" filter="url(#shadow)"/>
+<text x="1410.0" y="824" text-anchor="middle" class="state-name">CANCELLED</text>
+<text x="1410.0" y="853" text-anchor="middle" class="state-desc">A verified Stripe event reported that</text>
+<text x="1410.0" y="874" text-anchor="middle" class="state-desc">the Checkout Session expired.</text>
+<line x1="520" y1="370.0" x2="690" y2="370.0" stroke="#263746" stroke-width="2.2" marker-end="url(#arrow)"/>
+<text x="610.0" y="352.0" text-anchor="middle" class="edge-label">Backend creates Stripe Checkout Session</text>
+<path d="M 1130 330 H 1270 V 220 H 1440" fill="none" stroke="#2D8A4E" stroke-width="2.2" marker-end="url(#arrowGreen)"/>
+<text x="1320" y="190" text-anchor="middle" class="edge-small">Verified checkout.session.completed</text>
+<text x="1320" y="210" text-anchor="middle" class="edge-small">with payment_status = paid</text>
+<path d="M 1130 390 H 1330 V 270 H 1440" fill="none" stroke="#2D8A4E" stroke-width="2.2" marker-end="url(#arrowGreen)"/>
+<text x="1365" y="330" text-anchor="middle" class="edge-small">Verified checkout.session.async_payment_succeeded</text>
+<path d="M 915.0 455 V 515 H 1240 V 630.0 H 1250" fill="none" stroke="#C96A24" stroke-width="2.2" marker-end="url(#arrowOrange)"/>
+<text x="1085" y="505" text-anchor="middle" class="edge-small">Verified checkout.session.async_payment_failed</text>
+<path d="M 780 455 V 740 H 1230 V 860.0 H 1250" fill="none" stroke="#C63B45" stroke-width="2.2" marker-end="url(#arrowRed)"/>
+<text x="965" y="730" text-anchor="middle" class="edge-small">Verified checkout.session.expired</text>
+<path d="M 770 285 V 215 H 960 V 275" fill="none" stroke="#516271" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="895" y="177" text-anchor="middle" class="edge-small">checkout.session.completed</text>
+<text x="895" y="197" text-anchor="middle" class="edge-small">payment_status != paid → state unchanged</text>
+<path d="M 1260 605 H 1190 V 465 H 1095" fill="none" stroke="#357ABD" stroke-width="2.1" marker-end="url(#arrow)"/>
+<text x="1180" y="485" text-anchor="middle" class="edge-small">Customer retries with a new Checkout Session</text>
+<path d="M 1260 885 H 1140 V 490 H 1055" fill="none" stroke="#357ABD" stroke-width="2.1" marker-end="url(#arrow)"/>
+<text x="1090" y="515" text-anchor="middle" class="edge-small">Customer retries with a new Checkout Session</text>
+<line x1="1600.0" y1="310" x2="1600.0" y2="345" stroke="#2D8A4E" stroke-width="2.2" marker-end="url(#arrowGreen)"/>
+<circle cx="1600.0" cy="365" r="15" fill="#FFFFFF" stroke="#1F2933" stroke-width="2"/>
+<circle cx="1600.0" cy="365" r="8" fill="#1F2933"/>
+<text x="1635.0" y="370" class="terminal">End</text>
+<rect x="40" y="1010" width="360" height="190" rx="15" fill="#FFF9DE" stroke="#D5C268" stroke-width="1.5"/>
+<text x="58" y="1040" class="note-title">Verified webhooks only</text>
+<text x="58" y="1068" class="note">Only verified Stripe webhook events</text>
+<text x="58" y="1090" class="note">update payment status.</text>
+<rect x="430" y="1010" width="360" height="190" rx="15" fill="#FFF9DE" stroke="#D5C268" stroke-width="1.5"/>
+<text x="448" y="1040" class="note-title">Redirects are informational</text>
+<text x="448" y="1068" class="note">Frontend success or cancellation</text>
+<text x="448" y="1090" class="note">redirects do not confirm or cancel</text>
+<text x="448" y="1112" class="note">a payment.</text>
+<text x="448" y="1156" class="note">Clicking “back” also does not set</text>
+<text x="448" y="1178" class="note">the database status to CANCELLED.</text>
+<rect x="820" y="1010" width="360" height="190" rx="15" fill="#FFF9DE" stroke="#D5C268" stroke-width="1.5"/>
+<text x="838" y="1040" class="note-title">PAID cannot be downgraded</text>
+<text x="838" y="1068" class="note">Once payment becomes PAID, later</text>
+<text x="838" y="1090" class="note">non-paid webhook events cannot</text>
+<text x="838" y="1112" class="note">downgrade it.</text>
+<rect x="1210" y="1010" width="360" height="190" rx="15" fill="#FFF9DE" stroke="#D5C268" stroke-width="1.5"/>
+<text x="1228" y="1040" class="note-title">Atomic database update</text>
+<text x="1228" y="1068" class="note">Payment status is stored on both</text>
+<text x="1228" y="1090" class="note">Payment and Order records inside</text>
+<text x="1228" y="1112" class="note">one Prisma database transaction.</text>
+<rect x="1600" y="1010" width="360" height="190" rx="15" fill="#FFF9DE" stroke="#D5C268" stroke-width="1.5"/>
+<text x="1618" y="1040" class="note-title">Trusted amount</text>
+<text x="1618" y="1068" class="note">The amount sent to Stripe comes</text>
+<text x="1618" y="1090" class="note">from the backend-created immutable</text>
+<text x="1618" y="1112" class="note">order snapshot.</text>
+<rect x="390" y="1250" width="1220" height="150" rx="14" fill="#F3F7FA" stroke="#9EB2C2" stroke-width="1.5"/>
+<text x="410" y="1280" class="note-title" fill="#18324A">Implementation references</text>
+<text x="410" y="1310" class="tech">docs/architecture/11-stripe-checkout-flow.md — line 34</text>
+<text x="410" y="1336" class="tech">apps/api/src/payments/payments.service.ts — line 232</text>
+<text x="410" y="1366" class="state-desc">CANCELLED is set by verified checkout.session.expired — not by the browser cancellation redirect.</text>
+</svg>

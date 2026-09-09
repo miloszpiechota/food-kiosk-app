@@ -17,8 +17,6 @@ import type {
   BootstrapStatusResponse,
   CancelBootstrapSetupRequest,
   CancelBootstrapSetupResponse,
-  ConfirmInviteRequest,
-  ConfirmInviteResponse,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
   InviteAdminUserRequest,
@@ -26,9 +24,14 @@ import type {
   LoginRequest,
   LoginResponse,
   LogoutResponse,
+  RegenerateRecoveryCodesRequest,
+  RegenerateRecoveryCodesResponse,
   ResetPasswordRequest,
   ResetPasswordResponse,
+  SetupInviteRequest,
+  SetupInviteResponse,
   VerifyBootstrapTwoFactorRequest,
+  VerifyInviteTwoFactorRequest,
   VerifyTwoFactorRequest,
 } from './admin-auth.types';
 import { CurrentAdmin } from './current-admin.decorator';
@@ -90,12 +93,24 @@ export class AdminAuthController {
     return result;
   }
 
-  @Post('confirm-invite')
+  @Post('setup-invite')
   @HttpCode(200)
-  confirmInvite(
-    @Body() request: ConfirmInviteRequest,
-  ): Promise<ConfirmInviteResponse> {
-    return this.adminAuthService.confirmInvite(request);
+  setupInvite(
+    @Body() request: SetupInviteRequest,
+  ): Promise<SetupInviteResponse> {
+    return this.adminAuthService.setupInvite(request);
+  }
+
+  @Post('verify-invite-2fa')
+  @HttpCode(200)
+  async verifyInviteTwoFactor(
+    @Body() request: VerifyInviteTwoFactorRequest,
+    @Res({ passthrough: true }) response: Response,
+  ): Promise<LoginResponse> {
+    const result = await this.adminAuthService.verifyInviteTwoFactor(request);
+    this.setSessionCookie(response, result.sessionToken, result.expiresAt);
+
+    return result;
   }
 
   @Post('forgot-password')
@@ -112,6 +127,16 @@ export class AdminAuthController {
     @Body() request: ResetPasswordRequest,
   ): Promise<ResetPasswordResponse> {
     return this.adminAuthService.resetPassword(request);
+  }
+
+  @Post('recovery-codes/regenerate')
+  @HttpCode(200)
+  @UseGuards(AdminSessionGuard)
+  regenerateRecoveryCodes(
+    @CurrentAdmin() admin: AdminAuthenticatedSession,
+    @Body() request: RegenerateRecoveryCodesRequest,
+  ): Promise<RegenerateRecoveryCodesResponse> {
+    return this.adminAuthService.regenerateRecoveryCodes(admin, request);
   }
 
   @Get('me')

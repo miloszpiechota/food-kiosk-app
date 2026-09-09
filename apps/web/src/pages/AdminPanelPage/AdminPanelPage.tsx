@@ -3,8 +3,10 @@ import {
   useEffect,
   useMemo,
   useState,
+  type Dispatch,
   type FormEvent,
   type ReactNode,
+  type SetStateAction,
 } from "react";
 import QRCode from "qrcode";
 import {
@@ -12,15 +14,19 @@ import {
   ArrowLeft,
   Building2,
   ChevronRight,
+  Copy,
   CreditCard,
+  ImageIcon,
   Loader2,
   LogOut,
   Package,
+  Plus,
   Search,
   Settings,
   Shield,
   ShoppingCart,
   SlidersHorizontal,
+  Trash2,
   User,
   Users,
   Utensils,
@@ -31,7 +37,6 @@ import { summarizeBasketConfiguration } from "../../features/cart/lib/configurat
 import {
   bootstrapSuperAdmin,
   cancelAdminBootstrapSetup,
-  confirmAdminInvite,
   forgotAdminPassword,
   getAdminBootstrapStatus,
   getAdminOrder,
@@ -42,9 +47,12 @@ import {
   listAdminUsers,
   loginAdmin,
   logoutAdmin,
+  regenerateAdminRecoveryCodes,
   resetAdminPassword,
   saveAdminMenuVisibility,
+  setupAdminInvite,
   updateAdminOrderStatus,
+  verifyAdminInviteTwoFactor,
   verifyBootstrapTwoFactor,
   verifyAdminTwoFactor,
   type AdminOrderDetail,
@@ -61,7 +69,7 @@ import {
 } from "../../features/admin/api/adminApi";
 
 type AdminView = "login" | "shell";
-type LoginMode = "email" | "setup" | "reset" | "invite";
+type LoginMode = "email" | "setup" | "reset" | "invite" | "recovery";
 type LoginStep = "credentials" | "two-factor";
 type SetupStep = "account" | "two-factor";
 type ShellView = "orders" | "menu" | "admins" | "restaurants" | "settings";
@@ -72,7 +80,9 @@ type ProductType = "ITEM" | "MEAL" | "LARGE_MEAL";
 type TableState = "ready" | "loading" | "error" | "empty";
 
 const canUseTemporaryAdminBypass =
-  import.meta.env.DEV || import.meta.env.VITE_ENABLE_ADMIN_BYPASS === "true";
+  import.meta.env.DEV ||
+  (import.meta.env.MODE !== "production" &&
+    import.meta.env.VITE_ENABLE_ADMIN_BYPASS === "true");
 
 interface AdminPanelPageProps {
   onBackToKiosk: () => void;
@@ -136,6 +146,88 @@ interface MenuProduct {
   forcedHiddenReason?: string | null;
   requiredGroup?: string;
   affectedMeals?: number;
+}
+
+type MenuItemsTab = "list" | "builder";
+type MenuBuilderStepId =
+  | "basic"
+  | "item"
+  | "groups"
+  | "modifiers"
+  | "large"
+  | "pricing"
+  | "review";
+type SelectionMode = "SINGLE" | "MULTIPLE";
+type ModifierType = "REMOVE" | "ADD" | "EXTRA";
+type AvailabilityMode = "ALWAYS" | "SCHEDULED";
+
+interface MenuBuilderGroupOption {
+  id: string;
+  linkedProductId: string;
+  displayName: string;
+  priceAdjustmentCents: number;
+  isDefault: boolean;
+  isAvailable: boolean;
+  sortOrder: number;
+}
+
+interface MenuBuilderGroup {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  selectionMode: SelectionMode;
+  minSelections: number;
+  maxSelections: number;
+  sortOrder: number;
+  isAvailable: boolean;
+  options: MenuBuilderGroupOption[];
+}
+
+interface MenuBuilderModifierOption {
+  id: string;
+  name: string;
+  priceAdjustmentCents: number;
+  maxQuantity: number;
+  isAvailable: boolean;
+  sortOrder: number;
+}
+
+interface MenuBuilderModifierGroup {
+  id: string;
+  name: string;
+  type: ModifierType;
+  isRequired: boolean;
+  minSelections: number;
+  maxSelections: number;
+  allowQuantity: boolean;
+  options: MenuBuilderModifierOption[];
+}
+
+interface MenuBuilderDraft {
+  productType: ProductType;
+  restaurantId: string;
+  menuName: string;
+  category: string;
+  name: string;
+  sku: string;
+  description: string;
+  imageUrl: string;
+  basePriceCents: number;
+  currencyCode: string;
+  visible: boolean;
+  availabilityMode: AvailabilityMode;
+  availableFrom: string;
+  availableTo: string;
+  includedIngredients: string;
+  removableIngredients: string;
+  addonsNotes: string;
+  allergenLabels: string;
+  nutritionNotes: string;
+  groups: MenuBuilderGroup[];
+  modifiers: MenuBuilderModifierGroup[];
+  regularMealId: string;
+  largeBasePriceCents: number;
+  largeSurchargeNotes: string;
 }
 
 interface AdminUser {
@@ -379,8 +471,45 @@ const paymentStatusLabels: Record<PaymentStatus, string> = {
   CANCELLED: "Cancelled",
 };
 
+const menuBuilderDraftStorageKey = "admin-menu-builder-draft";
+
+const menuBuilderSteps: Array<{
+  id: MenuBuilderStepId;
+  label: string;
+  appliesTo: ProductType[];
+}> = [
+  { id: "basic", label: "Basic Info", appliesTo: ["ITEM", "MEAL", "LARGE_MEAL"] },
+  { id: "item", label: "Item Details", appliesTo: ["ITEM"] },
+  { id: "groups", label: "Meal Groups", appliesTo: ["MEAL", "LARGE_MEAL"] },
+  {
+    id: "modifiers",
+    label: "Modifiers",
+    appliesTo: ["ITEM", "MEAL", "LARGE_MEAL"],
+  },
+  { id: "large", label: "Large Meal", appliesTo: ["LARGE_MEAL"] },
+  {
+    id: "pricing",
+    label: "Pricing Review",
+    appliesTo: ["ITEM", "MEAL", "LARGE_MEAL"],
+  },
+  {
+    id: "review",
+    label: "Review",
+    appliesTo: ["ITEM", "MEAL", "LARGE_MEAL"],
+  },
+];
+
+const adminInputClass =
+  "min-h-9 w-full rounded-md border border-(--admin-border) bg-[#182030] px-3 text-xs text-[#dde2ee] outline-none placeholder:text-[#6b7694] focus:border-[#4f7ef7]";
+const adminTextareaClass =
+  "min-h-20 w-full rounded-md border border-(--admin-border) bg-[#182030] px-3 py-2 text-xs leading-5 text-[#dde2ee] outline-none placeholder:text-[#6b7694] focus:border-[#4f7ef7]";
+
 function formatPrice(cents: number): string {
   return `${(cents / 100).toFixed(2)} PLN`;
+}
+
+function formatCurrencyPrice(cents: number, currencyCode: string): string {
+  return `${(cents / 100).toFixed(2)} ${currencyCode || "PLN"}`;
 }
 
 function formatDateTime(value: string): string {
@@ -544,6 +673,283 @@ function toCents(value: string): number {
   return Math.round(Number(value) * 100);
 }
 
+function centsToInputValue(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+function inputValueToCents(value: string): number {
+  const amount = Number(value.replace(",", "."));
+
+  if (!Number.isFinite(amount)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.round(amount * 100));
+}
+
+function menuBuilderId(prefix: string): string {
+  const randomPart =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID().slice(0, 8)
+      : Math.random().toString(36).slice(2, 10);
+
+  return `${prefix}_${randomPart}`;
+}
+
+function createMenuBuilderDraft(defaultRestaurantId = ""): MenuBuilderDraft {
+  return {
+    productType: "ITEM",
+    restaurantId: defaultRestaurantId,
+    menuName: "Default menu",
+    category: "",
+    name: "",
+    sku: "",
+    description: "",
+    imageUrl: "",
+    basePriceCents: 0,
+    currencyCode: "PLN",
+    visible: true,
+    availabilityMode: "ALWAYS",
+    availableFrom: "",
+    availableTo: "",
+    includedIngredients: "",
+    removableIngredients: "",
+    addonsNotes: "",
+    allergenLabels: "",
+    nutritionNotes: "",
+    groups: [],
+    modifiers: [],
+    regularMealId: "",
+    largeBasePriceCents: 0,
+    largeSurchargeNotes: "",
+  };
+}
+
+function readMenuBuilderDraft(defaultRestaurantId = ""): MenuBuilderDraft {
+  if (typeof window === "undefined") {
+    return createMenuBuilderDraft(defaultRestaurantId);
+  }
+
+  try {
+    const rawDraft = window.localStorage.getItem(menuBuilderDraftStorageKey);
+
+    if (!rawDraft) {
+      return createMenuBuilderDraft(defaultRestaurantId);
+    }
+
+    const parsed = JSON.parse(rawDraft) as Partial<MenuBuilderDraft>;
+    const productType: ProductType =
+      parsed.productType === "MEAL" || parsed.productType === "LARGE_MEAL"
+        ? parsed.productType
+        : "ITEM";
+
+    return {
+      ...createMenuBuilderDraft(defaultRestaurantId),
+      ...parsed,
+      productType,
+      restaurantId: parsed.restaurantId ?? defaultRestaurantId,
+      groups: Array.isArray(parsed.groups) ? parsed.groups : [],
+      modifiers: Array.isArray(parsed.modifiers) ? parsed.modifiers : [],
+    };
+  } catch {
+    return createMenuBuilderDraft(defaultRestaurantId);
+  }
+}
+
+function writeMenuBuilderDraft(draft: MenuBuilderDraft): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  window.localStorage.setItem(menuBuilderDraftStorageKey, JSON.stringify(draft));
+}
+
+function validateMenuBuilderDraft(draft: MenuBuilderDraft): string[] {
+  const errors: string[] = [];
+
+  if (!draft.restaurantId) errors.push("Restaurant is required.");
+  if (!draft.menuName.trim()) errors.push("Menu is required.");
+  if (!draft.category.trim()) errors.push("Category is required.");
+  if (!draft.name.trim()) errors.push("Product name is required.");
+  if (!draft.sku.trim()) errors.push("SKU/code is required.");
+  if (draft.basePriceCents <= 0) errors.push("Base price must be greater than 0.");
+  if (!draft.currencyCode.trim()) errors.push("Currency is required.");
+  if (
+    draft.availabilityMode === "SCHEDULED" &&
+    (!draft.availableFrom || !draft.availableTo)
+  ) {
+    errors.push("Scheduled availability requires start and end dates.");
+  }
+
+  if (draft.productType !== "ITEM") {
+    if (draft.groups.length === 0) {
+      errors.push("Meal products need at least one required group.");
+    }
+
+    draft.groups.forEach((group) => {
+      if (!group.name.trim()) {
+        errors.push("Every meal group needs a name.");
+      }
+      if (group.minSelections > group.maxSelections) {
+        errors.push(`${group.name || "Meal group"} has min selections above max.`);
+      }
+      if (
+        group.selectionMode === "SINGLE" &&
+        group.options.filter((option) => option.isDefault).length > 1
+      ) {
+        errors.push(`${group.name || "Meal group"} can have only one default option.`);
+      }
+      if (
+        group.isRequired &&
+        group.isAvailable &&
+        group.options.filter((option) => option.isAvailable).length === 0
+      ) {
+        errors.push(`${group.name || "Required group"} has no available options.`);
+      }
+    });
+  }
+
+  if (draft.productType === "LARGE_MEAL" && !draft.regularMealId) {
+    errors.push("Large meal needs a linked regular meal.");
+  }
+
+  draft.modifiers.forEach((modifier) => {
+    if (!modifier.name.trim()) {
+      errors.push("Every modifier group needs a name.");
+    }
+    if (modifier.minSelections > modifier.maxSelections) {
+      errors.push(`${modifier.name || "Modifier group"} has min selections above max.`);
+    }
+  });
+
+  return errors;
+}
+
+function menuBuilderWarnings(draft: MenuBuilderDraft): string[] {
+  const warnings: string[] = [];
+
+  draft.groups.forEach((group) => {
+    const availableOptions = group.options.filter((option) => option.isAvailable);
+
+    if (!group.isAvailable && group.isRequired) {
+      warnings.push(`${group.name || "Required group"} is unavailable.`);
+    }
+    if (group.isRequired && availableOptions.length < group.minSelections) {
+      warnings.push(`${group.name || "Required group"} may make the meal unorderable.`);
+    }
+  });
+
+  return warnings;
+}
+
+function calculateMenuBuilderPricing(draft: MenuBuilderDraft): {
+  baseCents: number;
+  defaultCents: number;
+  minCents: number;
+  maxCents: number;
+  groupSurchargeCents: number;
+  addonSurchargeCents: number;
+} {
+  const baseCents =
+    draft.productType === "LARGE_MEAL" && draft.largeBasePriceCents > 0
+      ? draft.largeBasePriceCents
+      : draft.basePriceCents;
+  const defaultGroupSurcharges = draft.groups.reduce(
+    (sum, group) =>
+      sum +
+      group.options
+        .filter((option) => option.isDefault && option.isAvailable)
+        .reduce((optionSum, option) => optionSum + option.priceAdjustmentCents, 0),
+    0,
+  );
+  const minGroupSurcharges = draft.groups.reduce((sum, group) => {
+    const prices = group.options
+      .filter((option) => option.isAvailable)
+      .map((option) => option.priceAdjustmentCents)
+      .sort((left, right) => left - right);
+
+    return (
+      sum +
+      prices
+        .slice(0, Math.max(0, group.minSelections))
+        .reduce((optionSum, price) => optionSum + price, 0)
+    );
+  }, 0);
+  const maxGroupSurcharges = draft.groups.reduce((sum, group) => {
+    const prices = group.options
+      .filter((option) => option.isAvailable)
+      .map((option) => option.priceAdjustmentCents)
+      .sort((left, right) => right - left);
+
+    return (
+      sum +
+      prices
+        .slice(0, Math.max(0, group.maxSelections))
+        .reduce((optionSum, price) => optionSum + price, 0)
+    );
+  }, 0);
+  const addonSurchargeCents = draft.modifiers.reduce(
+    (sum, modifier) =>
+      sum +
+      modifier.options
+        .filter((option) => option.isAvailable && option.priceAdjustmentCents > 0)
+        .slice(0, Math.max(0, modifier.maxSelections))
+        .reduce((optionSum, option) => optionSum + option.priceAdjustmentCents, 0),
+    0,
+  );
+
+  return {
+    baseCents,
+    defaultCents: baseCents + defaultGroupSurcharges,
+    minCents: baseCents + minGroupSurcharges,
+    maxCents: baseCents + maxGroupSurcharges + addonSurchargeCents,
+    groupSurchargeCents: defaultGroupSurcharges,
+    addonSurchargeCents,
+  };
+}
+
+function menuBuilderProductFromDraft(
+  draft: MenuBuilderDraft,
+  adminRestaurants: AdminRestaurantSummary[],
+): MenuProduct {
+  const productId = `prod_${draft.sku.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+  const menuProductId = `mp_${draft.sku.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_")}`;
+  const restaurant = adminRestaurants.find((item) => item.id === draft.restaurantId);
+
+  return {
+    id: menuProductId,
+    productId,
+    restaurantId: draft.restaurantId,
+    restaurantName: restaurant?.name ?? "Selected restaurant",
+    name: draft.name.trim(),
+    category: draft.category.trim(),
+    type: draft.productType,
+    priceCents: calculateMenuBuilderPricing(draft).defaultCents,
+    currencyCode: draft.currencyCode.trim().toUpperCase(),
+    visible: draft.visible,
+    imageUrl:
+      draft.imageUrl.trim() ||
+      "https://images.pexels.com/photos/1640777/pexels-photo-1640777.jpeg",
+  };
+}
+
+function draftFromMenuProduct(product: MenuProduct): MenuBuilderDraft {
+  return {
+    ...createMenuBuilderDraft(product.restaurantId),
+    productType: product.type,
+    restaurantId: product.restaurantId,
+    category: product.category,
+    name: `${product.name} copy`,
+    sku: `${product.productId.replace(/^prod_/, "")}_copy`,
+    imageUrl: product.imageUrl,
+    basePriceCents: product.priceCents,
+    currencyCode: product.currencyCode,
+    visible: product.visible,
+    largeBasePriceCents:
+      product.type === "LARGE_MEAL" ? product.priceCents : 0,
+  };
+}
+
 function validateAdminEmailDomain(value: string): void {
   const domain = value.trim().split("@")[1] ?? "";
   const labels = domain.split(".");
@@ -664,6 +1070,17 @@ function AdminLogin({
   const [setupProvisioningUri, setSetupProvisioningUri] = useState("");
   const [setupQrCodeUrl, setSetupQrCodeUrl] = useState("");
   const [setupCode, setSetupCode] = useState("");
+  const [inviteStep, setInviteStep] = useState<SetupStep>("account");
+  const [invitePassword, setInvitePassword] = useState("");
+  const [invitePasswordRepeat, setInvitePasswordRepeat] = useState("");
+  const [inviteSecret, setInviteSecret] = useState("");
+  const [inviteSetupToken, setInviteSetupToken] = useState("");
+  const [inviteProvisioningUri, setInviteProvisioningUri] = useState("");
+  const [inviteQrCodeUrl, setInviteQrCodeUrl] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [pendingAuthResponse, setPendingAuthResponse] =
+    useState<AuthenticatedAdminResponse | null>(null);
   const inviteToken = initialInviteToken;
   const [resetEmail, setResetEmail] = useState("");
   const [resetToken, setResetToken] = useState(initialResetToken);
@@ -727,6 +1144,40 @@ function AdminLogin({
       isCurrent = false;
     };
   }, [setupProvisioningUri]);
+
+  useEffect(() => {
+    if (!inviteProvisioningUri) {
+      return undefined;
+    }
+
+    let isCurrent = true;
+
+    void Promise.resolve()
+      .then(() =>
+        QRCode.toDataURL(inviteProvisioningUri, {
+          margin: 2,
+          scale: 6,
+          color: {
+            dark: "#0c0f1a",
+            light: "#ffffff",
+          },
+        }),
+      )
+      .then((qrCodeUrl) => {
+        if (isCurrent) {
+          setInviteQrCodeUrl(qrCodeUrl);
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setInviteQrCodeUrl("");
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [inviteProvisioningUri]);
 
   useEffect(() => {
     if (!setupToken || setupStep !== "two-factor") {
@@ -804,7 +1255,7 @@ function AdminLogin({
         setupToken,
         code: setupCode,
       });
-      onSignedIn(response);
+      completeAuthenticatedSetup(response);
     });
   }
 
@@ -819,12 +1270,36 @@ function AdminLogin({
     });
   }
 
-  async function handleConfirmInvite(event: FormEvent<HTMLFormElement>) {
+  async function handleInviteSetup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await runAdminAction(async () => {
-      await confirmAdminInvite(inviteToken);
-      setStatusMessage("Invite confirmed. You can now sign in with 2FA.");
-      setMode("email");
+      if (invitePassword !== invitePasswordRepeat) {
+        throw new Error("Passwords must match.");
+      }
+      const response = await setupAdminInvite({
+        inviteToken,
+        password: invitePassword,
+      });
+      setInviteSecret(response.twoFactorSetup.manualEntryKey);
+      setInviteSetupToken(response.setupToken);
+      setInviteProvisioningUri(response.twoFactorSetup.provisioningUri);
+      setInviteQrCodeUrl("");
+      setInviteCode("");
+      setInviteStep("two-factor");
+      setStatusMessage(
+        "Password saved. Scan the QR code and verify 2FA to activate the account.",
+      );
+    });
+  }
+
+  async function handleInviteTwoFactor(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAdminAction(async () => {
+      const response = await verifyAdminInviteTwoFactor({
+        setupToken: inviteSetupToken,
+        code: inviteCode,
+      });
+      completeAuthenticatedSetup(response);
     });
   }
 
@@ -875,6 +1350,18 @@ function AdminLogin({
     setChallengeToken("");
     setStatusMessage("");
     setErrorMessage("");
+  }
+
+  function completeAuthenticatedSetup(response: AuthenticatedAdminResponse) {
+    if (response.recoveryCodes?.length) {
+      setPendingAuthResponse(response);
+      setRecoveryCodes(response.recoveryCodes);
+      setMode("recovery");
+      setStatusMessage("Save these recovery codes before opening the admin panel.");
+      return;
+    }
+
+    onSignedIn(response);
   }
 
   function openPasswordReset() {
@@ -1021,26 +1508,25 @@ function AdminLogin({
             <form onSubmit={handleTwoFactor} className="space-y-5">
               <PanelHeading
                 title="Two-factor verification"
-                text="Enter the six-digit code from your authenticator app."
+                text="Enter the six-digit code from your authenticator app or a recovery code."
               />
               <AdminField label="2FA code" icon={<Shield className="size-4" />}>
                 <input
                   value={code}
                   onChange={(event) =>
-                    setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                    setCode(event.target.value.toUpperCase().slice(0, 14))
                   }
-                  inputMode="numeric"
+                  inputMode="text"
                   autoComplete="one-time-code"
-                  pattern="\d{6}"
                   required
-                  placeholder="123456"
+                  placeholder="123456 or A1B2-C3D4-E5F6"
                   className="w-full bg-transparent text-sm font-semibold tracking-widest outline-none placeholder:text-[#6b7694]"
-                  aria-label="Six-digit two-factor authentication code"
+                  aria-label="Two-factor authentication code or recovery code"
                 />
               </AdminField>
               <button
                 type="submit"
-                disabled={busy || code.length !== 6}
+                disabled={busy || code.length < 6}
                 className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
               >
                 {busy ? "Verifying..." : "Verify and open admin panel"}
@@ -1192,25 +1678,146 @@ function AdminLogin({
             </div>
           ) : null}
 
-          {mode === "invite" ? (
+          {mode === "recovery" && pendingAuthResponse ? (
             <div className="space-y-5">
               <PanelHeading
-                title="Accept admin invite"
-                text="Confirm the invite from your email before signing in with your admin credentials."
+                title="Save recovery codes"
+                text="Each code can be used once if the authenticator app is unavailable."
               />
-              <form onSubmit={handleConfirmInvite} className="space-y-4">
-                <AdminReadonly label="Invite token from URL" value={inviteToken} />
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
-                >
-                  {busy ? "Confirming..." : "Confirm invite"}
-                </button>
-                <SecondaryButton onClick={() => setMode("email")}>
-                  Back to sign in
-                </SecondaryButton>
-              </form>
+              <div className="grid gap-2 rounded-md border border-(--admin-border) bg-[#0c0f1a] p-4 sm:grid-cols-2">
+                {recoveryCodes.map((recoveryCode) => (
+                  <code
+                    key={recoveryCode}
+                    className="rounded border border-(--admin-border) bg-[#182030] px-3 py-2 text-xs font-semibold text-[#dde2ee]"
+                  >
+                    {recoveryCode}
+                  </code>
+                ))}
+              </div>
+              <p className="text-xs leading-5 text-[#9aaabb]">
+                These codes are shown only once. Store them outside the kiosk
+                device before continuing.
+              </p>
+              <button
+                type="button"
+                onClick={() => onSignedIn(pendingAuthResponse)}
+                className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+              >
+                I saved the codes, open admin panel
+              </button>
+            </div>
+          ) : null}
+
+          {mode === "invite" ? (
+            <div className="space-y-5">
+              {inviteStep === "account" ? (
+                <>
+                  <PanelHeading
+                    title="Accept admin invite"
+                    text="Choose your password first. The next step activates mandatory 2FA."
+                  />
+                  <form onSubmit={handleInviteSetup} className="space-y-4">
+                    <AdminReadonly label="Invite token from URL" value={inviteToken} />
+                    <AdminField
+                      label="Password"
+                      icon={<Shield className="size-4" />}
+                    >
+                      <input
+                        value={invitePassword}
+                        onChange={(event) => setInvitePassword(event.target.value)}
+                        type="password"
+                        required
+                        minLength={12}
+                        placeholder="At least 12 characters"
+                        className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                      />
+                    </AdminField>
+                    <AdminField
+                      label="Repeat password"
+                      icon={<Shield className="size-4" />}
+                    >
+                      <input
+                        value={invitePasswordRepeat}
+                        onChange={(event) =>
+                          setInvitePasswordRepeat(event.target.value)
+                        }
+                        type="password"
+                        required
+                        minLength={12}
+                        placeholder="Repeat password"
+                        className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+                      />
+                    </AdminField>
+                    <button
+                      type="submit"
+                      disabled={busy}
+                      className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+                    >
+                      {busy ? "Saving..." : "Continue to 2FA setup"}
+                    </button>
+                    <SecondaryButton onClick={() => setMode("email")}>
+                      Back to sign in
+                    </SecondaryButton>
+                  </form>
+                </>
+              ) : null}
+
+              {inviteStep === "two-factor" ? (
+                <form onSubmit={handleInviteTwoFactor} className="space-y-5">
+                  <PanelHeading
+                    title="Set up 2FA"
+                    text="Scan the QR code in your authenticator app, then enter the six-digit code from that app."
+                  />
+                  <div className="grid gap-4 rounded-md border border-(--admin-border) bg-[#0c0f1a] p-4 sm:grid-cols-[160px_1fr]">
+                    <div className="flex size-40 items-center justify-center rounded-md bg-white p-2">
+                      {inviteQrCodeUrl ? (
+                        <img
+                          src={inviteQrCodeUrl}
+                          alt="QR code for invite two-factor setup"
+                          className="size-full"
+                        />
+                      ) : (
+                        <Loader2
+                          aria-hidden="true"
+                          className="size-6 animate-spin text-[#4f7ef7]"
+                        />
+                      )}
+                    </div>
+                    <p className="text-xs leading-5 text-[#9aaabb]">
+                      If scanning is unavailable, add the account manually with
+                      the setup key below.
+                    </p>
+                  </div>
+                  <AdminReadonly label="Manual setup key" value={inviteSecret} />
+                  <AdminField
+                    label="Enter the 6-digit 2FA code from your authenticator app"
+                    icon={<Shield className="size-4" />}
+                  >
+                    <input
+                      value={inviteCode}
+                      onChange={(event) =>
+                        setInviteCode(
+                          event.target.value.replace(/\D/g, "").slice(0, 6),
+                        )
+                      }
+                      inputMode="numeric"
+                      autoComplete="one-time-code"
+                      pattern="\d{6}"
+                      required
+                      placeholder="123456"
+                      className="w-full bg-transparent text-sm font-semibold tracking-widest outline-none placeholder:text-[#6b7694]"
+                      aria-label="Six-digit invite two-factor authentication code"
+                    />
+                  </AdminField>
+                  <button
+                    type="submit"
+                    disabled={busy || inviteCode.length !== 6 || !inviteSetupToken}
+                    className={`min-h-11 w-full rounded-md bg-[#4f7ef7] px-4 text-sm font-semibold text-white transition hover:bg-[#416de0] ${focusRing}`}
+                  >
+                    {busy ? "Verifying..." : "Verify 2FA and activate account"}
+                  </button>
+                </form>
+              ) : null}
             </div>
           ) : null}
 
@@ -1467,7 +2074,12 @@ function AdminShell({
             />
           ) : null}
           {view === "restaurants" ? <RestaurantsView /> : null}
-          {view === "settings" ? <SettingsView /> : null}
+          {view === "settings" ? (
+            <SettingsView
+              sessionToken={sessionToken}
+              isTemporaryBypass={isTemporaryBypass}
+            />
+          ) : null}
         </section>
       </div>
     </div>
@@ -1888,8 +2500,12 @@ function MenuItemsView({
 }) {
   const [products, setProducts] = useState<MenuProduct[]>([]);
   const [savedProducts, setSavedProducts] = useState<MenuProduct[]>([]);
+  const [activeTab, setActiveTab] = useState<MenuItemsTab>("list");
   const [visibility, setVisibility] = useState("");
   const [type, setType] = useState("");
+  const [builderDraft, setBuilderDraft] = useState<MenuBuilderDraft>(() =>
+    readMenuBuilderDraft(restaurants[0]?.id ?? ""),
+  );
   const [tableState, setTableState] = useState<TableState>("loading");
   const [errorMessage, setErrorMessage] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
@@ -1949,6 +2565,10 @@ function MenuItemsView({
   useEffect(() => {
     void Promise.resolve().then(loadProducts);
   }, [loadProducts]);
+
+  useEffect(() => {
+    writeMenuBuilderDraft(builderDraft);
+  }, [builderDraft]);
 
   const filtered = products.filter((product) => {
     const q = globalSearch.toLowerCase();
@@ -2044,128 +2664,220 @@ function MenuItemsView({
     setErrorMessage("");
   }
 
+  function saveBuilderDraft() {
+    writeMenuBuilderDraft(builderDraft);
+    setStatusMessage("Draft saved.");
+    setErrorMessage("");
+  }
+
+  function publishBuilderDraft() {
+    const validationErrors = validateMenuBuilderDraft(builderDraft);
+
+    setStatusMessage("");
+    if (validationErrors.length > 0) {
+      setErrorMessage(validationErrors.join(" "));
+      return;
+    }
+
+    if (!isTemporaryBypass) {
+      setErrorMessage("Menu publishing endpoint is not connected yet.");
+      return;
+    }
+
+    const nextProduct = menuBuilderProductFromDraft(builderDraft, restaurants);
+    setProducts((current) => [nextProduct, ...current]);
+    setSavedProducts((current) => [nextProduct, ...current]);
+    setBuilderDraft(createMenuBuilderDraft(restaurants[0]?.id ?? ""));
+    setActiveTab("list");
+    setErrorMessage("");
+    setStatusMessage("Temporary preview product published locally.");
+  }
+
   return (
     <div className="flex min-h-full flex-col">
       <ViewHeader
         title="Menu Items"
-        description={`${filtered.length} products in current view`}
+        description={
+          activeTab === "list"
+            ? `${filtered.length} products in current view`
+            : "Create products, meals, groups, modifiers, and pricing drafts"
+        }
+        action={
+          <div className="flex items-center gap-2 rounded-md border border-(--admin-border) bg-[#111828] p-1">
+            <MenuTabButton
+              active={activeTab === "list"}
+              onClick={() => setActiveTab("list")}
+            >
+              Menu list
+            </MenuTabButton>
+            <MenuTabButton
+              active={activeTab === "builder"}
+              onClick={() => {
+                setBuilderDraft((current) =>
+                  current.restaurantId
+                    ? current
+                    : { ...current, restaurantId: restaurants[0]?.id ?? "" },
+                );
+                setActiveTab("builder");
+              }}
+            >
+              Add product
+            </MenuTabButton>
+          </div>
+        }
       />
       {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
       {statusMessage ? (
         <AdminAlert tone="success">{statusMessage}</AdminAlert>
       ) : null}
-      <div className="flex flex-wrap items-center gap-2 border-b border-(--admin-border) bg-[#182030]/35 px-5 py-3">
-        <SlidersHorizontal className="size-4 text-[#6b7694]" />
-        <AdminSelect value={type} onChange={setType}>
-          <option value="">Any type</option>
-          <option value="ITEM">Item</option>
-          <option value="MEAL">Meal</option>
-          <option value="LARGE_MEAL">Large meal</option>
-        </AdminSelect>
-        <AdminSelect value={visibility} onChange={setVisibility}>
-          <option value="">Any visibility</option>
-          <option value="visible">Visible</option>
-          <option value="hidden">Hidden</option>
-        </AdminSelect>
-        <div className="ml-auto flex items-center gap-2">
-          {dirtyChanges.length > 0 ? (
-            <span className="text-xs font-semibold text-amber-300">
-              {dirtyChanges.length} unsaved
-            </span>
-          ) : (
-            <span className="text-xs text-[#6b7694]">No unsaved changes</span>
-          )}
-          <SecondaryButton
-            onClick={resetVisibilityChanges}
-            disabled={dirtyChanges.length === 0 || saving}
-          >
-            Reset
-          </SecondaryButton>
-          <PrimaryButton
-            type="button"
-            onClick={saveVisibilityChanges}
-            disabled={saving || dirtyChanges.length === 0}
-          >
-            {saving ? "Saving..." : "Save changes"}
-          </PrimaryButton>
-        </div>
-      </div>
-      <StatePanel state={tableState} emptyLabel="No menu items found">
-        <DataTable
-          columns={[
-            "Product",
-            "Type",
-            "Category",
-            "Restaurant",
-            "Price",
-            "Visibility",
-          ]}
-        >
-          {filtered.map((product) => (
-            <tr key={product.id} className="border-b border-(--admin-border)">
-              <Cell>
-                <div className="flex items-center gap-3">
-                  <img
-                    src={product.imageUrl}
-                    alt=""
-                    className="size-10 rounded object-cover"
-                  />
-                  <div>
-                    <p className="font-semibold text-[#dde2ee]">
-                      {product.name}
-                    </p>
-                    <p className="font-mono text-[10px] text-[#6b7694]">
-                      {product.productId}
-                    </p>
-                  </div>
-                </div>
-              </Cell>
-              <Cell>
-                <Badge tone="neutral">{product.type}</Badge>
-              </Cell>
-              <Cell muted>{product.category}</Cell>
-              <Cell muted>
-                {restaurants.find((restaurant) => restaurant.id === product.restaurantId)
-                  ?.name ?? product.restaurantName}
-              </Cell>
-              <Cell mono>
-                {formatPrice(product.priceCents)} {product.currencyCode}
-              </Cell>
-              <Cell>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => toggleProduct(product)}
-                    className={`relative h-5 w-9 rounded-full transition ${
-                      product.visible ? "bg-emerald-500" : "bg-[#2d3a5c]"
-                    }`}
-                    aria-label={`Toggle ${product.name} visibility`}
-                  >
-                    <span
-                      className={`absolute top-0.5 size-4 rounded-full bg-white transition ${
-                        product.visible ? "left-4" : "left-0.5"
-                      }`}
-                    />
-                  </button>
-                  <span
-                    className={`text-xs font-semibold ${
-                      product.visible ? "text-emerald-300" : "text-[#6b7694]"
-                    }`}
-                  >
-                    {product.visible ? "Visible" : "Hidden"}
-                  </span>
-                  {product.forcedHiddenReason ? (
-                    <Badge tone="amber">Meal auto-hidden</Badge>
-                  ) : null}
-                  {dirtyProductIds.has(product.id) ? (
-                    <Badge tone="amber">Unsaved</Badge>
-                  ) : null}
-                </div>
-              </Cell>
-            </tr>
-          ))}
-        </DataTable>
-      </StatePanel>
+
+      {activeTab === "list" ? (
+        <>
+          <div className="flex flex-wrap items-center gap-2 border-b border-(--admin-border) bg-[#182030]/35 px-5 py-3">
+            <SlidersHorizontal className="size-4 text-[#6b7694]" />
+            <AdminSelect value={type} onChange={setType}>
+              <option value="">Any type</option>
+              <option value="ITEM">Item</option>
+              <option value="MEAL">Meal</option>
+              <option value="LARGE_MEAL">Large meal</option>
+            </AdminSelect>
+            <AdminSelect value={visibility} onChange={setVisibility}>
+              <option value="">Any visibility</option>
+              <option value="visible">Visible</option>
+              <option value="hidden">Hidden</option>
+            </AdminSelect>
+            <div className="ml-auto flex items-center gap-2">
+              {dirtyChanges.length > 0 ? (
+                <span className="text-xs font-semibold text-amber-300">
+                  {dirtyChanges.length} unsaved
+                </span>
+              ) : (
+                <span className="text-xs text-[#6b7694]">No unsaved changes</span>
+              )}
+              <SecondaryButton
+                onClick={resetVisibilityChanges}
+                disabled={dirtyChanges.length === 0 || saving}
+              >
+                Reset
+              </SecondaryButton>
+              <PrimaryButton
+                type="button"
+                onClick={saveVisibilityChanges}
+                disabled={saving || dirtyChanges.length === 0}
+              >
+                {saving ? "Saving..." : "Save changes"}
+              </PrimaryButton>
+            </div>
+          </div>
+          <StatePanel state={tableState} emptyLabel="No menu items found">
+            <DataTable
+              columns={[
+                "Product",
+                "Type",
+                "Category",
+                "Restaurant",
+                "Price",
+                "Visibility",
+                "Actions",
+              ]}
+            >
+              {filtered.map((product) => (
+                <tr key={product.id} className="border-b border-(--admin-border)">
+                  <Cell>
+                    <div className="flex items-center gap-3">
+                      <img
+                        src={product.imageUrl}
+                        alt=""
+                        className="size-10 rounded object-cover"
+                      />
+                      <div>
+                        <p className="font-semibold text-[#dde2ee]">
+                          {product.name}
+                        </p>
+                        <p className="font-mono text-[10px] text-[#6b7694]">
+                          {product.productId}
+                        </p>
+                      </div>
+                    </div>
+                  </Cell>
+                  <Cell>
+                    <Badge tone="neutral">{product.type}</Badge>
+                  </Cell>
+                  <Cell muted>{product.category}</Cell>
+                  <Cell muted>
+                    {restaurants.find(
+                      (restaurant) => restaurant.id === product.restaurantId,
+                    )?.name ?? product.restaurantName}
+                  </Cell>
+                  <Cell mono>
+                    {formatCurrencyPrice(product.priceCents, product.currencyCode)}
+                  </Cell>
+                  <Cell>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => toggleProduct(product)}
+                        className={`relative h-5 w-9 rounded-full transition ${
+                          product.visible ? "bg-emerald-500" : "bg-[#2d3a5c]"
+                        }`}
+                        aria-label={`Toggle ${product.name} visibility`}
+                      >
+                        <span
+                          className={`absolute top-0.5 size-4 rounded-full bg-white transition ${
+                            product.visible ? "left-4" : "left-0.5"
+                          }`}
+                        />
+                      </button>
+                      <span
+                        className={`text-xs font-semibold ${
+                          product.visible ? "text-emerald-300" : "text-[#6b7694]"
+                        }`}
+                      >
+                        {product.visible ? "Visible" : "Hidden"}
+                      </span>
+                      {product.forcedHiddenReason ? (
+                        <Badge tone="amber">Meal auto-hidden</Badge>
+                      ) : null}
+                      {dirtyProductIds.has(product.id) ? (
+                        <Badge tone="amber">Unsaved</Badge>
+                      ) : null}
+                    </div>
+                  </Cell>
+                  <Cell>
+                    <div className="flex gap-2">
+                      <SmallActionButton
+                        icon={<Copy className="size-3.5" />}
+                        label="Duplicate"
+                        onClick={() => {
+                          setBuilderDraft(draftFromMenuProduct(product));
+                          setActiveTab("builder");
+                        }}
+                      />
+                      <SmallActionButton
+                        icon={<ChevronRight className="size-3.5" />}
+                        label="Edit"
+                        onClick={() => {
+                          setBuilderDraft(draftFromMenuProduct(product));
+                          setActiveTab("builder");
+                        }}
+                      />
+                    </div>
+                  </Cell>
+                </tr>
+              ))}
+            </DataTable>
+          </StatePanel>
+        </>
+      ) : (
+        <AdminMenuBuilder
+          draft={builderDraft}
+          onDraftChange={setBuilderDraft}
+          products={products}
+          restaurants={restaurants}
+          onSaveDraft={saveBuilderDraft}
+          onPublish={publishBuilderDraft}
+        />
+      )}
 
       {warningProduct ? (
         <Modal title="Visibility warning" onClose={() => setWarningProduct(null)}>
@@ -2196,6 +2908,1405 @@ function MenuItemsView({
         </Modal>
       ) : null}
     </div>
+  );
+}
+
+function AdminMenuBuilder({
+  draft,
+  onDraftChange,
+  products,
+  restaurants,
+  onSaveDraft,
+  onPublish,
+}: {
+  draft: MenuBuilderDraft;
+  onDraftChange: Dispatch<SetStateAction<MenuBuilderDraft>>;
+  products: MenuProduct[];
+  restaurants: AdminRestaurantSummary[];
+  onSaveDraft: () => void;
+  onPublish: () => void;
+}) {
+  const [stepId, setStepId] = useState<MenuBuilderStepId>("basic");
+  const steps = menuBuilderSteps.filter((step) =>
+    step.appliesTo.includes(draft.productType),
+  );
+  const selectedStep = steps.find((step) => step.id === stepId) ?? steps[0];
+  const activeStep = selectedStep;
+  const activeStepIndex = Math.max(
+    0,
+    steps.findIndex((step) => step.id === activeStep?.id),
+  );
+  const validationErrors = validateMenuBuilderDraft(draft);
+  const warnings = menuBuilderWarnings(draft);
+  const pricing = calculateMenuBuilderPricing(draft);
+  const selectableItems = products.filter((product) => product.type === "ITEM");
+  const mealProducts = products.filter((product) => product.type === "MEAL");
+
+  function updateDraft(patch: Partial<MenuBuilderDraft>) {
+    onDraftChange((current) => ({ ...current, ...patch }));
+  }
+
+  function goToOffset(offset: number) {
+    const nextStep = steps[activeStepIndex + offset];
+
+    if (nextStep) {
+      setStepId(nextStep.id);
+    }
+  }
+
+  return (
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="grid flex-1 grid-cols-1 gap-0 xl:grid-cols-[220px_1fr_320px]">
+        <aside className="border-b border-(--admin-border) bg-[#0c0f1a] p-4 xl:border-b-0 xl:border-r">
+          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
+            {steps.map((step, index) => (
+              <button
+                key={step.id}
+                type="button"
+                onClick={() => setStepId(step.id)}
+                className={`flex items-center justify-between rounded-md border px-3 py-2 text-left text-xs font-semibold transition ${
+                  activeStep?.id === step.id
+                    ? "border-[#4f7ef7] bg-[#182030] text-white"
+                    : "border-(--admin-border) text-[#9aaabb] hover:text-white"
+                } ${focusRing}`}
+              >
+                <span>{step.label}</span>
+                <span className="font-mono text-[10px] text-[#6b7694]">
+                  {index + 1}
+                </span>
+              </button>
+            ))}
+          </div>
+        </aside>
+
+        <main className="min-w-0 space-y-4 p-5">
+          {validationErrors.length > 0 ? (
+            <div className="rounded-md border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-200">
+              <p className="font-semibold">Validation summary</p>
+              <ul className="mt-2 list-disc space-y-1 pl-4">
+                {validationErrors.slice(0, 5).map((error) => (
+                  <li key={error}>{error}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {activeStep?.id === "basic" ? (
+            <BuilderBasicStep
+              draft={draft}
+              restaurants={restaurants}
+              onChange={updateDraft}
+            />
+          ) : null}
+          {activeStep?.id === "item" ? (
+            <BuilderItemStep draft={draft} onChange={updateDraft} />
+          ) : null}
+          {activeStep?.id === "groups" ? (
+            <BuilderGroupsStep
+              draft={draft}
+              products={selectableItems}
+              onDraftChange={onDraftChange}
+            />
+          ) : null}
+          {activeStep?.id === "modifiers" ? (
+            <BuilderModifiersStep draft={draft} onDraftChange={onDraftChange} />
+          ) : null}
+          {activeStep?.id === "large" ? (
+            <BuilderLargeMealStep
+              draft={draft}
+              mealProducts={mealProducts}
+              onChange={updateDraft}
+            />
+          ) : null}
+          {activeStep?.id === "pricing" ? (
+            <BuilderPricingStep pricing={pricing} draft={draft} />
+          ) : null}
+          {activeStep?.id === "review" ? (
+            <BuilderReviewStep
+              draft={draft}
+              pricing={pricing}
+              warnings={warnings}
+            />
+          ) : null}
+        </main>
+
+        <aside className="border-t border-(--admin-border) bg-[#0c0f1a] p-4 xl:border-l xl:border-t-0">
+          <BuilderPreview
+            draft={draft}
+            pricing={pricing}
+            warnings={warnings}
+            restaurantName={
+              restaurants.find((restaurant) => restaurant.id === draft.restaurantId)
+                ?.name ?? "Restaurant"
+            }
+          />
+        </aside>
+      </div>
+
+      <div className="sticky bottom-0 flex flex-wrap items-center justify-between gap-3 border-t border-(--admin-border) bg-[#111828]/95 px-5 py-3 backdrop-blur">
+        <div className="text-xs text-[#6b7694]">
+          Step {activeStepIndex + 1} of {steps.length}
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <SecondaryButton
+            onClick={() => goToOffset(-1)}
+            disabled={activeStepIndex === 0}
+          >
+            Back
+          </SecondaryButton>
+          <SecondaryButton onClick={onSaveDraft}>Save draft</SecondaryButton>
+          <PrimaryButton
+            type="button"
+            onClick={() => goToOffset(1)}
+            disabled={activeStepIndex === steps.length - 1}
+          >
+            Continue
+          </PrimaryButton>
+          <PrimaryButton
+            type="button"
+            onClick={onPublish}
+            disabled={validationErrors.length > 0}
+          >
+            Publish
+          </PrimaryButton>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BuilderBasicStep({
+  draft,
+  restaurants,
+  onChange,
+}: {
+  draft: MenuBuilderDraft;
+  restaurants: AdminRestaurantSummary[];
+  onChange: (patch: Partial<MenuBuilderDraft>) => void;
+}) {
+  return (
+    <BuilderSection title="Basic Info">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BuilderField label="Product type">
+          <select
+            value={draft.productType}
+            onChange={(event) =>
+              onChange({ productType: event.target.value as ProductType })
+            }
+            className={adminInputClass}
+          >
+            <option value="ITEM">Item</option>
+            <option value="MEAL">Meal</option>
+            <option value="LARGE_MEAL">Large meal</option>
+          </select>
+        </BuilderField>
+        <BuilderField label="Restaurant" error={!draft.restaurantId ? "Required" : ""}>
+          <select
+            value={draft.restaurantId}
+            onChange={(event) => onChange({ restaurantId: event.target.value })}
+            className={adminInputClass}
+          >
+            <option value="">Select restaurant</option>
+            {restaurants.map((restaurant) => (
+              <option key={restaurant.id} value={restaurant.id}>
+                {restaurant.name}
+              </option>
+            ))}
+          </select>
+        </BuilderField>
+        <BuilderField label="Menu" error={!draft.menuName.trim() ? "Required" : ""}>
+          <input
+            value={draft.menuName}
+            onChange={(event) => onChange({ menuName: event.target.value })}
+            className={adminInputClass}
+            placeholder="Default menu"
+          />
+        </BuilderField>
+        <BuilderField label="Category" error={!draft.category.trim() ? "Required" : ""}>
+          <input
+            value={draft.category}
+            onChange={(event) => onChange({ category: event.target.value })}
+            className={adminInputClass}
+            placeholder="Burgers, Sides, Drinks"
+          />
+        </BuilderField>
+        <BuilderField label="Product name" error={!draft.name.trim() ? "Required" : ""}>
+          <input
+            value={draft.name}
+            onChange={(event) => onChange({ name: event.target.value })}
+            className={adminInputClass}
+            placeholder="Classic Burger"
+          />
+        </BuilderField>
+        <BuilderField label="SKU/code" error={!draft.sku.trim() ? "Required" : ""}>
+          <input
+            value={draft.sku}
+            onChange={(event) => onChange({ sku: event.target.value })}
+            className={adminInputClass}
+            placeholder="classic_burger"
+          />
+        </BuilderField>
+        <BuilderField
+          label="Base price"
+          error={draft.basePriceCents <= 0 ? "Must be greater than 0" : ""}
+        >
+          <input
+            value={centsToInputValue(draft.basePriceCents)}
+            onChange={(event) =>
+              onChange({ basePriceCents: inputValueToCents(event.target.value) })
+            }
+            inputMode="decimal"
+            className={adminInputClass}
+            placeholder="29.90"
+          />
+        </BuilderField>
+        <BuilderField label="Currency" error={!draft.currencyCode ? "Required" : ""}>
+          <input
+            value={draft.currencyCode}
+            onChange={(event) =>
+              onChange({ currencyCode: event.target.value.toUpperCase().slice(0, 3) })
+            }
+            className={adminInputClass}
+            placeholder="PLN"
+          />
+        </BuilderField>
+      </div>
+
+      <BuilderField label="Description">
+        <textarea
+          value={draft.description}
+          onChange={(event) => onChange({ description: event.target.value })}
+          className={adminTextareaClass}
+          placeholder="Short customer-facing description"
+        />
+      </BuilderField>
+
+      <BuilderField label="Image URL">
+        <div className="flex items-center gap-2">
+          <ImageIcon className="size-4 text-[#6b7694]" />
+          <input
+            value={draft.imageUrl}
+            onChange={(event) => onChange({ imageUrl: event.target.value })}
+            className={adminInputClass}
+            placeholder="https://..."
+          />
+        </div>
+      </BuilderField>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ToggleField
+          label="Visibility"
+          checked={draft.visible}
+          checkedLabel="Visible"
+          uncheckedLabel="Hidden"
+          onChange={(visible) => onChange({ visible })}
+        />
+        <BuilderField label="Availability">
+          <select
+            value={draft.availabilityMode}
+            onChange={(event) =>
+              onChange({ availabilityMode: event.target.value as AvailabilityMode })
+            }
+            className={adminInputClass}
+          >
+            <option value="ALWAYS">Always available</option>
+            <option value="SCHEDULED">Scheduled</option>
+          </select>
+        </BuilderField>
+      </div>
+
+      {draft.availabilityMode === "SCHEDULED" ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <BuilderField label="Available from">
+            <input
+              value={draft.availableFrom}
+              onChange={(event) => onChange({ availableFrom: event.target.value })}
+              type="datetime-local"
+              className={adminInputClass}
+            />
+          </BuilderField>
+          <BuilderField label="Available to">
+            <input
+              value={draft.availableTo}
+              onChange={(event) => onChange({ availableTo: event.target.value })}
+              type="datetime-local"
+              className={adminInputClass}
+            />
+          </BuilderField>
+        </div>
+      ) : null}
+    </BuilderSection>
+  );
+}
+
+function BuilderItemStep({
+  draft,
+  onChange,
+}: {
+  draft: MenuBuilderDraft;
+  onChange: (patch: Partial<MenuBuilderDraft>) => void;
+}) {
+  return (
+    <BuilderSection title="Simple Item Details">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BuilderField label="Included ingredients">
+          <textarea
+            value={draft.includedIngredients}
+            onChange={(event) =>
+              onChange({ includedIngredients: event.target.value })
+            }
+            className={adminTextareaClass}
+            placeholder="Bun, beef patty, cheddar"
+          />
+        </BuilderField>
+        <BuilderField label="Removable ingredients">
+          <textarea
+            value={draft.removableIngredients}
+            onChange={(event) =>
+              onChange({ removableIngredients: event.target.value })
+            }
+            className={adminTextareaClass}
+            placeholder="Pickles, onion, tomato"
+          />
+        </BuilderField>
+        <BuilderField label="Add-ons with prices">
+          <textarea
+            value={draft.addonsNotes}
+            onChange={(event) => onChange({ addonsNotes: event.target.value })}
+            className={adminTextareaClass}
+            placeholder="Cheese +2.00, bacon +4.00"
+          />
+        </BuilderField>
+        <BuilderField label="Allergens">
+          <textarea
+            value={draft.allergenLabels}
+            onChange={(event) => onChange({ allergenLabels: event.target.value })}
+            className={adminTextareaClass}
+            placeholder="Gluten, milk, sesame"
+          />
+        </BuilderField>
+      </div>
+      <BuilderField label="Nutrition notes">
+        <textarea
+          value={draft.nutritionNotes}
+          onChange={(event) => onChange({ nutritionNotes: event.target.value })}
+          className={adminTextareaClass}
+          placeholder="Optional"
+        />
+      </BuilderField>
+    </BuilderSection>
+  );
+}
+
+function BuilderGroupsStep({
+  draft,
+  products,
+  onDraftChange,
+}: {
+  draft: MenuBuilderDraft;
+  products: MenuProduct[];
+  onDraftChange: Dispatch<SetStateAction<MenuBuilderDraft>>;
+}) {
+  function updateGroup(groupId: string, patch: Partial<MenuBuilderGroup>) {
+    onDraftChange((current) => ({
+      ...current,
+      groups: current.groups.map((group) =>
+        group.id === groupId ? { ...group, ...patch } : group,
+      ),
+    }));
+  }
+
+  function updateOption(
+    groupId: string,
+    optionId: string,
+    patch: Partial<MenuBuilderGroupOption>,
+  ) {
+    onDraftChange((current) => ({
+      ...current,
+      groups: current.groups.map((group) =>
+        group.id === groupId
+          ? {
+              ...group,
+              options: group.options.map((option) =>
+                option.id === optionId ? { ...option, ...patch } : option,
+              ),
+            }
+          : group,
+      ),
+    }));
+  }
+
+  function addGroup() {
+    onDraftChange((current) => ({
+      ...current,
+      groups: [
+        ...current.groups,
+        {
+          id: menuBuilderId("group"),
+          name: "",
+          isRequired: true,
+          selectionMode: "SINGLE",
+          minSelections: 1,
+          maxSelections: 1,
+          sortOrder: current.groups.length + 1,
+          isAvailable: true,
+          options: [],
+        },
+      ],
+    }));
+  }
+
+  function addOption(groupId: string) {
+    onDraftChange((current) => ({
+      ...current,
+      groups: current.groups.map((group) =>
+        group.id === groupId
+          ? {
+              ...group,
+              options: [
+                ...group.options,
+                {
+                  id: menuBuilderId("option"),
+                  linkedProductId: "",
+                  displayName: "",
+                  priceAdjustmentCents: 0,
+                  isDefault: group.options.length === 0,
+                  isAvailable: true,
+                  sortOrder: group.options.length + 1,
+                },
+              ],
+            }
+          : group,
+      ),
+    }));
+  }
+
+  function removeGroup(groupId: string) {
+    onDraftChange((current) => ({
+      ...current,
+      groups: current.groups.filter((group) => group.id !== groupId),
+    }));
+  }
+
+  function removeOption(groupId: string, optionId: string) {
+    onDraftChange((current) => ({
+      ...current,
+      groups: current.groups.map((group) =>
+        group.id === groupId
+          ? {
+              ...group,
+              options: group.options.filter((option) => option.id !== optionId),
+            }
+          : group,
+      ),
+    }));
+  }
+
+  function moveGroup(groupId: string, direction: -1 | 1) {
+    onDraftChange((current) => {
+      const index = current.groups.findIndex((group) => group.id === groupId);
+      const nextIndex = index + direction;
+
+      if (index < 0 || nextIndex < 0 || nextIndex >= current.groups.length) {
+        return current;
+      }
+
+      const groups = [...current.groups];
+      const [group] = groups.splice(index, 1);
+      groups.splice(nextIndex, 0, group);
+
+      return {
+        ...current,
+        groups: groups.map((item, itemIndex) => ({
+          ...item,
+          sortOrder: itemIndex + 1,
+        })),
+      };
+    });
+  }
+
+  return (
+    <BuilderSection
+      title="Meal Groups"
+      action={
+        <PrimaryButton type="button" onClick={addGroup}>
+          <span className="inline-flex items-center gap-1">
+            <Plus className="size-3.5" />
+            Add group
+          </span>
+        </PrimaryButton>
+      }
+    >
+      {draft.groups.length === 0 ? (
+        <EmptyBuilderState label="Add first group" onClick={addGroup} />
+      ) : null}
+      <div className="space-y-3">
+        {draft.groups.map((group) => (
+          <div
+            key={group.id}
+            className="rounded-md border border-(--admin-border) bg-[#0c0f1a] p-4"
+          >
+            <div className="mb-4 flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => moveGroup(group.id, -1)}
+                className={`rounded border border-(--admin-border) px-2 py-1 text-xs text-[#9aaabb] hover:text-white ${focusRing}`}
+              >
+                Up
+              </button>
+              <button
+                type="button"
+                onClick={() => moveGroup(group.id, 1)}
+                className={`rounded border border-(--admin-border) px-2 py-1 text-xs text-[#9aaabb] hover:text-white ${focusRing}`}
+              >
+                Down
+              </button>
+              <button
+                type="button"
+                onClick={() => removeGroup(group.id)}
+                className={`ml-auto rounded border border-red-500/30 px-2 py-1 text-xs text-red-200 hover:bg-red-500/10 ${focusRing}`}
+              >
+                <Trash2 className="inline size-3.5" /> Remove
+              </button>
+            </div>
+            <div className="grid gap-3 lg:grid-cols-3">
+              <BuilderField label="Group name" error={!group.name ? "Required" : ""}>
+                <input
+                  value={group.name}
+                  onChange={(event) =>
+                    updateGroup(group.id, { name: event.target.value })
+                  }
+                  className={adminInputClass}
+                  placeholder="Burger, Side, Drink"
+                />
+              </BuilderField>
+              <BuilderField label="Selection mode">
+                <select
+                  value={group.selectionMode}
+                  onChange={(event) =>
+                    updateGroup(group.id, {
+                      selectionMode: event.target.value as SelectionMode,
+                    })
+                  }
+                  className={adminInputClass}
+                >
+                  <option value="SINGLE">Single choice</option>
+                  <option value="MULTIPLE">Multiple choice</option>
+                </select>
+              </BuilderField>
+              <ToggleField
+                label="Group availability"
+                checked={group.isAvailable}
+                checkedLabel="Available"
+                uncheckedLabel="Unavailable"
+                onChange={(isAvailable) => updateGroup(group.id, { isAvailable })}
+              />
+              <NumberBuilderField
+                label="Min selections"
+                value={group.minSelections}
+                onChange={(minSelections) => updateGroup(group.id, { minSelections })}
+              />
+              <NumberBuilderField
+                label="Max selections"
+                value={group.maxSelections}
+                onChange={(maxSelections) => updateGroup(group.id, { maxSelections })}
+              />
+              <ToggleField
+                label="Required group"
+                checked={group.isRequired}
+                checkedLabel="Required"
+                uncheckedLabel="Optional"
+                onChange={(isRequired) => updateGroup(group.id, { isRequired })}
+              />
+            </div>
+            <div className="mt-4 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-semibold text-[#9aaabb]">Options</p>
+                <SecondaryButton onClick={() => addOption(group.id)}>
+                  Add option
+                </SecondaryButton>
+              </div>
+              {group.options.length === 0 ? (
+                <EmptyBuilderState
+                  label="Add first option"
+                  onClick={() => addOption(group.id)}
+                />
+              ) : null}
+              {group.options.map((option) => (
+                <div
+                  key={option.id}
+                  className="grid gap-2 rounded border border-(--admin-border) bg-[#111828] p-3 lg:grid-cols-[1.3fr_1fr_110px_95px_95px_40px]"
+                >
+                  <select
+                    value={option.linkedProductId}
+                    onChange={(event) => {
+                      const linked = products.find(
+                        (product) => product.id === event.target.value,
+                      );
+                      updateOption(group.id, option.id, {
+                        linkedProductId: event.target.value,
+                        displayName: linked?.name ?? option.displayName,
+                      });
+                    }}
+                    className={adminInputClass}
+                    aria-label="Linked product option"
+                  >
+                    <option value="">Linked product</option>
+                    {products.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    value={option.displayName}
+                    onChange={(event) =>
+                      updateOption(group.id, option.id, {
+                        displayName: event.target.value,
+                      })
+                    }
+                    className={adminInputClass}
+                    placeholder="Display name"
+                    aria-label="Option display name"
+                  />
+                  <input
+                    value={centsToInputValue(option.priceAdjustmentCents)}
+                    onChange={(event) =>
+                      updateOption(group.id, option.id, {
+                        priceAdjustmentCents: inputValueToCents(event.target.value),
+                      })
+                    }
+                    inputMode="decimal"
+                    className={adminInputClass}
+                    aria-label="Option price adjustment"
+                  />
+                  <TogglePill
+                    checked={option.isDefault}
+                    label="Default"
+                    onChange={(isDefault) =>
+                      updateOption(group.id, option.id, { isDefault })
+                    }
+                  />
+                  <TogglePill
+                    checked={option.isAvailable}
+                    label="Available"
+                    onChange={(isAvailable) =>
+                      updateOption(group.id, option.id, { isAvailable })
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeOption(group.id, option.id)}
+                    className={`rounded border border-(--admin-border) text-[#9aaabb] hover:text-white ${focusRing}`}
+                    aria-label="Remove option"
+                  >
+                    <Trash2 className="mx-auto size-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </BuilderSection>
+  );
+}
+
+function BuilderModifiersStep({
+  draft,
+  onDraftChange,
+}: {
+  draft: MenuBuilderDraft;
+  onDraftChange: Dispatch<SetStateAction<MenuBuilderDraft>>;
+}) {
+  function addModifier() {
+    onDraftChange((current) => ({
+      ...current,
+      modifiers: [
+        ...current.modifiers,
+        {
+          id: menuBuilderId("modifier"),
+          name: "",
+          type: "ADD",
+          isRequired: false,
+          minSelections: 0,
+          maxSelections: 3,
+          allowQuantity: true,
+          options: [],
+        },
+      ],
+    }));
+  }
+
+  function updateModifier(
+    modifierId: string,
+    patch: Partial<MenuBuilderModifierGroup>,
+  ) {
+    onDraftChange((current) => ({
+      ...current,
+      modifiers: current.modifiers.map((modifier) =>
+        modifier.id === modifierId ? { ...modifier, ...patch } : modifier,
+      ),
+    }));
+  }
+
+  function addModifierOption(modifierId: string) {
+    onDraftChange((current) => ({
+      ...current,
+      modifiers: current.modifiers.map((modifier) =>
+        modifier.id === modifierId
+          ? {
+              ...modifier,
+              options: [
+                ...modifier.options,
+                {
+                  id: menuBuilderId("modifier_option"),
+                  name: "",
+                  priceAdjustmentCents: 0,
+                  maxQuantity: 1,
+                  isAvailable: true,
+                  sortOrder: modifier.options.length + 1,
+                },
+              ],
+            }
+          : modifier,
+      ),
+    }));
+  }
+
+  function updateModifierOption(
+    modifierId: string,
+    optionId: string,
+    patch: Partial<MenuBuilderModifierOption>,
+  ) {
+    onDraftChange((current) => ({
+      ...current,
+      modifiers: current.modifiers.map((modifier) =>
+        modifier.id === modifierId
+          ? {
+              ...modifier,
+              options: modifier.options.map((option) =>
+                option.id === optionId ? { ...option, ...patch } : option,
+              ),
+            }
+          : modifier,
+      ),
+    }));
+  }
+
+  function removeModifier(modifierId: string) {
+    onDraftChange((current) => ({
+      ...current,
+      modifiers: current.modifiers.filter(
+        (modifier) => modifier.id !== modifierId,
+      ),
+    }));
+  }
+
+  function removeModifierOption(modifierId: string, optionId: string) {
+    onDraftChange((current) => ({
+      ...current,
+      modifiers: current.modifiers.map((modifier) =>
+        modifier.id === modifierId
+          ? {
+              ...modifier,
+              options: modifier.options.filter((option) => option.id !== optionId),
+            }
+          : modifier,
+      ),
+    }));
+  }
+
+  return (
+    <BuilderSection
+      title="Modifiers And Add-ons"
+      action={
+        <PrimaryButton type="button" onClick={addModifier}>
+          <span className="inline-flex items-center gap-1">
+            <Plus className="size-3.5" />
+            Add modifier
+          </span>
+        </PrimaryButton>
+      }
+    >
+      {draft.modifiers.length === 0 ? (
+        <EmptyBuilderState label="Add first modifier" onClick={addModifier} />
+      ) : null}
+      <div className="space-y-3">
+        {draft.modifiers.map((modifier) => (
+          <div
+            key={modifier.id}
+            className="rounded-md border border-(--admin-border) bg-[#0c0f1a] p-4"
+          >
+            <div className="grid gap-3 lg:grid-cols-3">
+              <BuilderField
+                label="Group name"
+                error={!modifier.name ? "Required" : ""}
+              >
+                <input
+                  value={modifier.name}
+                  onChange={(event) =>
+                    updateModifier(modifier.id, { name: event.target.value })
+                  }
+                  className={adminInputClass}
+                  placeholder="Sauces, extras, removals"
+                />
+              </BuilderField>
+              <BuilderField label="Type">
+                <select
+                  value={modifier.type}
+                  onChange={(event) =>
+                    updateModifier(modifier.id, {
+                      type: event.target.value as ModifierType,
+                    })
+                  }
+                  className={adminInputClass}
+                >
+                  <option value="REMOVE">Remove ingredient</option>
+                  <option value="ADD">Add ingredient</option>
+                  <option value="EXTRA">Extra quantity</option>
+                </select>
+              </BuilderField>
+              <ToggleField
+                label="Required"
+                checked={modifier.isRequired}
+                checkedLabel="Required"
+                uncheckedLabel="Optional"
+                onChange={(isRequired) =>
+                  updateModifier(modifier.id, { isRequired })
+                }
+              />
+              <NumberBuilderField
+                label="Min selections"
+                value={modifier.minSelections}
+                onChange={(minSelections) =>
+                  updateModifier(modifier.id, { minSelections })
+                }
+              />
+              <NumberBuilderField
+                label="Max selections"
+                value={modifier.maxSelections}
+                onChange={(maxSelections) =>
+                  updateModifier(modifier.id, { maxSelections })
+                }
+              />
+              <ToggleField
+                label="Quantity"
+                checked={modifier.allowQuantity}
+                checkedLabel="Allowed"
+                uncheckedLabel="Single"
+                onChange={(allowQuantity) =>
+                  updateModifier(modifier.id, { allowQuantity })
+                }
+              />
+            </div>
+            <div className="mt-4 flex justify-between gap-2">
+              <SecondaryButton onClick={() => addModifierOption(modifier.id)}>
+                Add option
+              </SecondaryButton>
+              <button
+                type="button"
+                onClick={() => removeModifier(modifier.id)}
+                className={`rounded border border-red-500/30 px-2 py-1 text-xs text-red-200 hover:bg-red-500/10 ${focusRing}`}
+              >
+                Remove group
+              </button>
+            </div>
+            <div className="mt-3 space-y-2">
+              {modifier.options.map((option) => (
+                <div
+                  key={option.id}
+                  className="grid gap-2 rounded border border-(--admin-border) bg-[#111828] p-3 lg:grid-cols-[1fr_110px_110px_95px_40px]"
+                >
+                  <input
+                    value={option.name}
+                    onChange={(event) =>
+                      updateModifierOption(modifier.id, option.id, {
+                        name: event.target.value,
+                      })
+                    }
+                    className={adminInputClass}
+                    placeholder="Option name"
+                    aria-label="Modifier option name"
+                  />
+                  <input
+                    value={centsToInputValue(option.priceAdjustmentCents)}
+                    onChange={(event) =>
+                      updateModifierOption(modifier.id, option.id, {
+                        priceAdjustmentCents: inputValueToCents(event.target.value),
+                      })
+                    }
+                    inputMode="decimal"
+                    className={adminInputClass}
+                    aria-label="Modifier option price"
+                  />
+                  <input
+                    value={option.maxQuantity}
+                    onChange={(event) =>
+                      updateModifierOption(modifier.id, option.id, {
+                        maxQuantity: Number(event.target.value),
+                      })
+                    }
+                    type="number"
+                    min={1}
+                    className={adminInputClass}
+                    aria-label="Max quantity per option"
+                  />
+                  <TogglePill
+                    checked={option.isAvailable}
+                    label="Available"
+                    onChange={(isAvailable) =>
+                      updateModifierOption(modifier.id, option.id, {
+                        isAvailable,
+                      })
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeModifierOption(modifier.id, option.id)}
+                    className={`rounded border border-(--admin-border) text-[#9aaabb] hover:text-white ${focusRing}`}
+                    aria-label="Remove modifier option"
+                  >
+                    <Trash2 className="mx-auto size-3.5" />
+                  </button>
+                </div>
+              ))}
+              {modifier.options.length === 0 ? (
+                <EmptyBuilderState
+                  label="Add first option"
+                  onClick={() => addModifierOption(modifier.id)}
+                />
+              ) : null}
+            </div>
+          </div>
+        ))}
+      </div>
+    </BuilderSection>
+  );
+}
+
+function BuilderLargeMealStep({
+  draft,
+  mealProducts,
+  onChange,
+}: {
+  draft: MenuBuilderDraft;
+  mealProducts: MenuProduct[];
+  onChange: (patch: Partial<MenuBuilderDraft>) => void;
+}) {
+  return (
+    <BuilderSection title="Large Meal Link">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <BuilderField
+          label="Regular meal version"
+          error={!draft.regularMealId ? "Required" : ""}
+        >
+          <select
+            value={draft.regularMealId}
+            onChange={(event) => onChange({ regularMealId: event.target.value })}
+            className={adminInputClass}
+          >
+            <option value="">Select regular meal</option>
+            {mealProducts.map((product) => (
+              <option key={product.id} value={product.id}>
+                {product.name}
+              </option>
+            ))}
+          </select>
+        </BuilderField>
+        <BuilderField label="Large-specific base price">
+          <input
+            value={centsToInputValue(draft.largeBasePriceCents)}
+            onChange={(event) =>
+              onChange({
+                largeBasePriceCents: inputValueToCents(event.target.value),
+              })
+            }
+            inputMode="decimal"
+            className={adminInputClass}
+            placeholder="39.90"
+          />
+        </BuilderField>
+      </div>
+      <BuilderField label="Large-specific surcharges">
+        <textarea
+          value={draft.largeSurchargeNotes}
+          onChange={(event) => onChange({ largeSurchargeNotes: event.target.value })}
+          className={adminTextareaClass}
+          placeholder="Large fries +3.00, large drink +2.00"
+        />
+      </BuilderField>
+    </BuilderSection>
+  );
+}
+
+function BuilderPricingStep({
+  pricing,
+  draft,
+}: {
+  pricing: ReturnType<typeof calculateMenuBuilderPricing>;
+  draft: MenuBuilderDraft;
+}) {
+  return (
+    <BuilderSection title="Pricing Review">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <PriceBox
+          label="Base price"
+          value={pricing.baseCents}
+          currencyCode={draft.currencyCode}
+        />
+        <PriceBox
+          label="Default configuration"
+          value={pricing.defaultCents}
+          currencyCode={draft.currencyCode}
+        />
+        <PriceBox
+          label="Min possible"
+          value={pricing.minCents}
+          currencyCode={draft.currencyCode}
+        />
+        <PriceBox
+          label="Max possible"
+          value={pricing.maxCents}
+          currencyCode={draft.currencyCode}
+        />
+        <PriceBox
+          label="Group surcharges"
+          value={pricing.groupSurchargeCents}
+          currencyCode={draft.currencyCode}
+        />
+        <PriceBox
+          label="Add-on surcharges"
+          value={pricing.addonSurchargeCents}
+          currencyCode={draft.currencyCode}
+        />
+      </div>
+      <div className="rounded-md border border-(--admin-border) bg-[#0c0f1a] p-4 text-xs leading-5 text-[#9aaabb]">
+        Customer price preview uses {draft.currencyCode || "PLN"} and starts at{" "}
+        <span className="font-semibold text-white">
+          {formatCurrencyPrice(pricing.defaultCents, draft.currencyCode)}
+        </span>
+        .
+      </div>
+    </BuilderSection>
+  );
+}
+
+function BuilderReviewStep({
+  draft,
+  pricing,
+  warnings,
+}: {
+  draft: MenuBuilderDraft;
+  pricing: ReturnType<typeof calculateMenuBuilderPricing>;
+  warnings: string[];
+}) {
+  return (
+    <BuilderSection title="Review And Publish">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <DetailSection title="Product">
+          <Detail label="Name" value={draft.name || "Not set"} />
+          <Detail label="Type" value={<Badge tone="neutral">{draft.productType}</Badge>} />
+          <Detail label="Menu" value={draft.menuName || "Not set"} />
+          <Detail label="Category" value={draft.category || "Not set"} />
+          <Detail label="Visibility" value={draft.visible ? "Visible" : "Hidden"} />
+          <Detail
+            label="Price"
+            value={formatCurrencyPrice(pricing.defaultCents, draft.currencyCode)}
+            strong
+          />
+        </DetailSection>
+        <DetailSection title="Configuration">
+          <Detail label="Groups" value={draft.groups.length} />
+          <Detail label="Modifiers" value={draft.modifiers.length} />
+          <Detail
+            label="Availability"
+            value={
+              draft.availabilityMode === "ALWAYS" ? "Always available" : "Scheduled"
+            }
+          />
+          <Detail label="Warnings" value={warnings.length} />
+        </DetailSection>
+      </div>
+    </BuilderSection>
+  );
+}
+
+function BuilderPreview({
+  draft,
+  pricing,
+  warnings,
+  restaurantName,
+}: {
+  draft: MenuBuilderDraft;
+  pricing: ReturnType<typeof calculateMenuBuilderPricing>;
+  warnings: string[];
+  restaurantName: string;
+}) {
+  return (
+    <div className="sticky top-4 space-y-4">
+      <div className="rounded-md border border-(--admin-border) bg-[#111828] p-3">
+        <div className="aspect-[4/3] overflow-hidden rounded bg-[#182030]">
+          {draft.imageUrl ? (
+            <img
+              src={draft.imageUrl}
+              alt=""
+              className="size-full object-cover"
+            />
+          ) : (
+            <div className="flex size-full items-center justify-center text-[#6b7694]">
+              <ImageIcon className="size-8" />
+            </div>
+          )}
+        </div>
+        <div className="mt-3 space-y-2">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <p className="text-sm font-semibold text-white">
+                {draft.name || "Product name"}
+              </p>
+              <p className="text-xs text-[#6b7694]">{restaurantName}</p>
+            </div>
+            <Badge tone={draft.visible ? "green" : "neutral"}>
+              {draft.visible ? "Visible" : "Hidden"}
+            </Badge>
+          </div>
+          <p className="line-clamp-3 min-h-10 text-xs leading-5 text-[#9aaabb]">
+            {draft.description || "Description preview"}
+          </p>
+          <div className="flex items-center justify-between border-t border-(--admin-border) pt-3">
+            <span className="text-xs text-[#6b7694]">From</span>
+            <span className="font-mono text-sm font-semibold text-white">
+              {formatCurrencyPrice(pricing.defaultCents, draft.currencyCode)}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <DetailSection title="Price Summary">
+        <Detail
+          label="Base"
+          value={formatCurrencyPrice(pricing.baseCents, draft.currencyCode)}
+          mono
+        />
+        <Detail
+          label="Default"
+          value={formatCurrencyPrice(pricing.defaultCents, draft.currencyCode)}
+          mono
+          strong
+        />
+        <Detail
+          label="Min"
+          value={formatCurrencyPrice(pricing.minCents, draft.currencyCode)}
+          mono
+        />
+        <Detail
+          label="Max"
+          value={formatCurrencyPrice(pricing.maxCents, draft.currencyCode)}
+          mono
+        />
+      </DetailSection>
+
+      {warnings.length > 0 ? (
+        <div className="rounded-md border border-amber-500/25 bg-amber-500/10 p-3 text-xs leading-5 text-amber-200">
+          {warnings.map((warning) => (
+            <p key={warning}>{warning}</p>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BuilderSection({
+  title,
+  action,
+  children,
+}: {
+  title: string;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-4">
+      <div className="flex min-h-9 items-center justify-between gap-3">
+        <h2 className="text-base font-semibold text-white">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function BuilderField({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="block space-y-1.5">
+      <span className="flex items-center justify-between gap-2">
+        <span className="text-xs font-semibold text-[#9aaabb]">{label}</span>
+        {error ? <span className="text-[10px] text-red-200">{error}</span> : null}
+      </span>
+      {children}
+    </label>
+  );
+}
+
+function NumberBuilderField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <BuilderField label={label}>
+      <input
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        type="number"
+        min={0}
+        className={adminInputClass}
+      />
+    </BuilderField>
+  );
+}
+
+function ToggleField({
+  label,
+  checked,
+  checkedLabel,
+  uncheckedLabel,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  checkedLabel: string;
+  uncheckedLabel: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <p className="text-xs font-semibold text-[#9aaabb]">{label}</p>
+      <TogglePill
+        checked={checked}
+        label={checked ? checkedLabel : uncheckedLabel}
+        onChange={onChange}
+      />
+    </div>
+  );
+}
+
+function TogglePill({
+  checked,
+  label,
+  onChange,
+}: {
+  checked: boolean;
+  label: string;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`flex min-h-9 items-center justify-center rounded-md border px-3 text-xs font-semibold transition ${
+        checked
+          ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+          : "border-(--admin-border) bg-[#182030] text-[#9aaabb]"
+      } ${focusRing}`}
+    >
+      {label}
+    </button>
+  );
+}
+
+function EmptyBuilderState({
+  label,
+  onClick,
+}: {
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-20 w-full items-center justify-center gap-2 rounded-md border border-dashed border-(--admin-border) bg-[#111828] text-xs font-semibold text-[#9aaabb] transition hover:text-white ${focusRing}`}
+    >
+      <Plus className="size-4" />
+      {label}
+    </button>
+  );
+}
+
+function PriceBox({
+  label,
+  value,
+  currencyCode = "PLN",
+}: {
+  label: string;
+  value: number;
+  currencyCode?: string;
+}) {
+  return (
+    <div className="rounded-md border border-(--admin-border) bg-[#0c0f1a] p-4">
+      <p className="text-xs text-[#6b7694]">{label}</p>
+      <p className="mt-1 font-mono text-sm font-semibold text-white">
+        {formatCurrencyPrice(value, currencyCode)}
+      </p>
+    </div>
+  );
+}
+
+function MenuTabButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-h-8 rounded px-3 text-xs font-semibold transition ${
+        active ? "bg-[#4f7ef7] text-white" : "text-[#9aaabb] hover:text-white"
+      } ${focusRing}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SmallActionButton({
+  icon,
+  label,
+  onClick,
+}: {
+  icon: ReactNode;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`inline-flex min-h-8 items-center gap-1 rounded border border-(--admin-border) px-2 text-xs font-semibold text-[#9aaabb] transition hover:text-white ${focusRing}`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 
@@ -2246,7 +4357,6 @@ function AdminUsersView({
 
   async function handleInvite(invite: {
     email: string;
-    password: string;
     restaurantId: string;
   }): Promise<InviteAdminUserResponse> {
     if (isTemporaryBypass) {
@@ -2271,9 +4381,6 @@ function AdminUsersView({
         role: "ADMIN",
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         invitationUrl: "temporary-preview-invite",
-        twoFactorSetup: {
-          manualEntryKey: "TEMPORARYPREVIEWKEY",
-        },
         delivery: {
           channel: "console",
           previewToken: "temporary-preview-token",
@@ -2283,7 +4390,6 @@ function AdminUsersView({
 
     const response = await inviteAdminUser(sessionToken, {
       email: invite.email,
-      password: invite.password,
       restaurantIds: [invite.restaurantId],
     });
     await loadAdminData();
@@ -2370,13 +4476,11 @@ function InviteModal({
   onClose: () => void;
   onInvite: (invite: {
     email: string;
-    password: string;
     restaurantId: string;
   }) => Promise<InviteAdminUserResponse>;
 }) {
   const [sent, setSent] = useState<InviteAdminUserResponse | null>(null);
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [restaurantId, setRestaurantId] = useState(restaurants[0]?.id ?? "");
   const [errorMessage, setErrorMessage] = useState("");
   const [busy, setBusy] = useState(false);
@@ -2386,7 +4490,7 @@ function InviteModal({
     setBusy(true);
     setErrorMessage("");
     try {
-      setSent(await onInvite({ email, password, restaurantId }));
+      setSent(await onInvite({ email, restaurantId }));
     } catch (error) {
       setErrorMessage(
         error instanceof Error ? error.message : "Could not send invite.",
@@ -2406,15 +4510,17 @@ function InviteModal({
           <div className="space-y-4">
             <div className="rounded-md border border-emerald-500/25 bg-emerald-500/10 p-4 text-sm leading-6 text-emerald-200">
               Invitation sent to <strong>{sent.email}</strong>. The new admin is
-              pending until they confirm the invite and complete 2FA login.
+              pending until they choose a password and complete 2FA setup.
             </div>
             <AdminReadonly label="Invitation URL" value={sent.invitationUrl} />
-            <AdminReadonly
-              label="Google Authenticator manual key"
-              value={sent.twoFactorSetup.manualEntryKey}
-            />
             {sent.delivery.previewToken ? (
               <AdminReadonly label="Dev invite token" value={sent.delivery.previewToken} />
+            ) : null}
+            {sent.delivery.providerMessageId ? (
+              <AdminReadonly
+                label="Email provider message ID"
+                value={sent.delivery.providerMessageId}
+              />
             ) : null}
             <div className="flex justify-end">
               <PrimaryButton type="button" onClick={onClose}>
@@ -2428,9 +4534,8 @@ function InviteModal({
               <AdminAlert tone="error">{errorMessage}</AdminAlert>
             ) : null}
             <p className="rounded-md border border-(--admin-border) bg-[#0c0f1a] px-3 py-2 text-xs leading-5 text-[#9aaabb]">
-              Super admin creates the worker account, sets initial credentials,
-              and sends the invite. The user becomes active only after 2FA
-              setup and first successful login.
+              Super admin sends an invite only. The worker chooses their own
+              password and enrolls 2FA before the account becomes active.
             </p>
             <AdminField label="Email" icon={<User className="size-4" />}>
               <input
@@ -2439,17 +4544,6 @@ function InviteModal({
                 type="email"
                 required
                 placeholder="worker@restaurant.example"
-                className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
-              />
-            </AdminField>
-            <AdminField label="Initial password" icon={<Shield className="size-4" />}>
-              <input
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                type="password"
-                required
-                minLength={12}
-                placeholder="Temporary password"
                 className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
               />
             </AdminField>
@@ -2489,13 +4583,133 @@ function RestaurantsView() {
   );
 }
 
-function SettingsView() {
+function SettingsView({
+  sessionToken,
+  isTemporaryBypass,
+}: {
+  sessionToken: string;
+  isTemporaryBypass: boolean;
+}) {
+  const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  async function handleRegenerate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusy(true);
+    setErrorMessage("");
+    setStatusMessage("");
+    try {
+      if (isTemporaryBypass) {
+        throw new Error("Recovery codes require a real admin session.");
+      }
+      const response = await regenerateAdminRecoveryCodes(sessionToken, {
+        password,
+        code,
+      });
+      setRecoveryCodes(response.recoveryCodes);
+      setPassword("");
+      setCode("");
+      setStatusMessage(
+        "Recovery codes regenerated. Store them before leaving this page.",
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Could not regenerate recovery codes.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <PlaceholderView
-      icon={<Settings className="size-6" />}
-      title="Settings"
-      text="Admin settings will include session behavior and 2FA recovery policy."
-    />
+    <div>
+      <ViewHeader
+        title="Settings"
+        description="Manage account security settings for the current admin session."
+      />
+      <div className="grid max-w-3xl gap-5 p-5">
+        {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
+        {statusMessage ? (
+          <AdminAlert tone="success">{statusMessage}</AdminAlert>
+        ) : null}
+
+        <section className="grid gap-4 rounded-md border border-(--admin-border) bg-[#111828] p-5">
+          <PanelHeading
+            title="2FA recovery codes"
+            text="Generate a fresh set when old codes may be lost or exposed."
+          />
+          <form onSubmit={handleRegenerate} className="grid gap-4">
+            <AdminField
+              label="Current password"
+              icon={<Shield className="size-4" />}
+            >
+              <input
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                type="password"
+                autoComplete="current-password"
+                required
+                placeholder="Password"
+                className="w-full bg-transparent text-sm outline-none placeholder:text-[#6b7694]"
+              />
+            </AdminField>
+            <AdminField
+              label="Current 6-digit 2FA code"
+              icon={<Shield className="size-4" />}
+            >
+              <input
+                value={code}
+                onChange={(event) =>
+                  setCode(event.target.value.replace(/\D/g, "").slice(0, 6))
+                }
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="\d{6}"
+                required
+                placeholder="123456"
+                className="w-full bg-transparent text-sm font-semibold tracking-widest outline-none placeholder:text-[#6b7694]"
+              />
+            </AdminField>
+            <div className="flex justify-end">
+              <PrimaryButton
+                type="submit"
+                disabled={busy || code.length !== 6 || !password}
+              >
+                {busy ? "Regenerating..." : "Regenerate recovery codes"}
+              </PrimaryButton>
+            </div>
+          </form>
+        </section>
+
+        {recoveryCodes.length > 0 ? (
+          <section className="grid gap-3 rounded-md border border-amber-400/25 bg-amber-400/10 p-5">
+            <h2 className="text-sm font-semibold text-white">
+              Save these codes now
+            </h2>
+            <p className="text-xs leading-5 text-[#9aaabb]">
+              Existing unused recovery codes were disabled. These new codes are
+              shown only once.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2">
+              {recoveryCodes.map((recoveryCode) => (
+                <code
+                  key={recoveryCode}
+                  className="rounded border border-(--admin-border) bg-[#182030] px-3 py-2 text-xs font-semibold text-[#dde2ee]"
+                >
+                  {recoveryCode}
+                </code>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

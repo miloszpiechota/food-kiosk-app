@@ -6,24 +6,29 @@ Partially implemented.
 
 Implemented now:
 
-- `AdminAuthModule` with first super-admin bootstrap, bootstrap status, cancelable bootstrap setup, email/password login, mandatory TOTP challenge, password reset, invite creation, invite confirmation, session lookup, and logout.
+- `AdminAuthModule` with first super-admin bootstrap, bootstrap status, cancelable bootstrap setup, invite creation, invite password/TOTP setup, email/password login, mandatory TOTP or recovery-code challenge, password reset, session lookup, and logout.
 - First super-admin setup is a two-step flow: account details first, then QR/manual TOTP enrollment and six-digit verification before the account becomes active.
 - Admin sessions use opaque tokens, token hashes in the database, and HTTP-only cookies.
-- Admin guards protect restaurant and menu-product endpoints.
+- Admin guards protect restaurant, order, and menu-product endpoints.
 - `SUPER_ADMIN` can invite `ADMIN` users and list admin users.
+- Invited workers set their own password and enroll TOTP before the admin account becomes active.
+- Recovery codes are generated after successful first 2FA enrollment and stored only as hashes.
+- Authenticated admins can regenerate recovery codes after confirming their current password and TOTP code.
+- Login and password-reset requests are rate-limited, password failures can lock an account temporarily, and important admin auth events are stored as audit logs.
+- Admin invite and password-reset email delivery supports a Resend provider for production and console delivery for local development.
+- New admin password hashes use Node `scrypt`; legacy PBKDF2 hashes are still verified and can be upgraded after successful login.
 - Admin menu-product list and batch visibility save are backend-backed.
 - Admin order list, search, filters, detail view, and status updates are backend-backed.
 - Admin order status updates validate allowed workflow transitions on the backend.
 - Kiosk catalog responses hide meals when a required meal group has no visible menu option.
-- The frontend admin panel has login, first setup, invite confirmation, password reset, order search/filter/detail/status management, menu visibility save/reset controls, and a temporary dev-only bypass for UI work.
+- The frontend admin panel has login, first setup, invite acceptance with password and QR/manual 2FA enrollment, password reset, order search/filter/detail/status management, menu visibility save/reset controls, and a dev-only opt-in bypass for UI work.
 
 Still incomplete:
 
-- Production email provider. Current local email delivery is console-backed.
-- Production password hashing hardening. Current implementation uses Node `crypto.pbkdf2`; Argon2 is still preferred before production.
-- Rate limiting, audit logging, recovery-code policy, and broader security hardening.
+- Optional Argon2 password hashing swap if native dependencies are approved for the deployment environment.
+- Broader security hardening and a production recovery-code support process.
 - Backend-backed restaurant management screens.
-- Removal of the temporary dev-only admin bypass before production use.
+- Removal of the temporary dev-only admin bypass code during final production polish.
 
 ## Goals
 
@@ -81,20 +86,23 @@ Allowed responsibilities:
 Current flow:
 
 1. `SUPER_ADMIN` opens admin user management.
-2. `SUPER_ADMIN` enters email, temporary password, and restaurant access.
-3. Backend creates an inactive `AdminUser`, TOTP secret, restaurant access rows, and an `AdminInvite`.
+2. `SUPER_ADMIN` enters worker email and restaurant access.
+3. Backend creates an `AdminInvite` plus invite restaurant-access rows.
 4. Backend stores only `tokenHash`, not the raw invite token.
-5. Current local delivery writes the invite URL and manual TOTP key through the console-backed email provider.
+5. Current local delivery writes only the invite URL through the console-backed email provider.
 6. Invited worker opens the invite link.
-7. Backend marks the invite accepted and activates the already-created admin account.
-8. Worker signs in with email, temporary password, and the TOTP code.
+7. Worker sets their own password.
+8. Backend creates an inactive `AdminUser`, restaurant access rows, a TOTP secret, and a short-lived setup challenge.
+9. Frontend displays QR/manual TOTP setup.
+10. Worker verifies the six-digit authenticator code.
+11. Backend marks the invite accepted, enables 2FA, activates the admin account, creates recovery codes, and issues the admin session.
 
-Production target:
+Production email delivery:
 
-- do not email passwords
-- invited workers should set their own password during invite acceptance
-- invite acceptance should include QR/manual TOTP enrollment and code verification before activation
-- use a real transactional provider such as Resend, Postmark, SendGrid, or AWS SES
+- set `ADMIN_EMAIL_PROVIDER=resend`
+- set `RESEND_API_KEY` to the Resend API key
+- set `ADMIN_EMAIL_FROM` to a verified Resend sender
+- keep `ADMIN_PUBLIC_URL` pointed at the deployed admin panel URL
 
 Recommended email providers:
 
@@ -103,7 +111,7 @@ Recommended email providers:
 - SendGrid
 - AWS SES
 
-For this project, Resend is the simplest first production choice.
+For this project, Resend is the implemented production provider. Console delivery remains the local development fallback only.
 
 ## Login Options
 
@@ -120,7 +128,7 @@ This is the required baseline login.
 
 The final session must not be issued before TOTP is verified.
 
-Admin access uses email, password, and mandatory TOTP verification only.
+Admin access uses email, password, and mandatory TOTP verification. A one-time recovery code can replace the TOTP code when the authenticator app is unavailable.
 
 ## Recommended Auth Technology
 
@@ -128,23 +136,30 @@ Backend:
 
 - NestJS module: `AdminAuthModule`
 - current first implementation:
-  - password hashing: Node `crypto.pbkdf2` with per-password salt
+  - password hashing: Node `crypto.scrypt` with per-password salt and memory-hard parameters
+  - legacy password verification: Node `crypto.pbkdf2` hashes still verify for migration compatibility
   - TOTP: local RFC 6238-compatible service using Node `crypto`
   - sessions: opaque random token stored as `AdminSession.tokenHash`, delivered in the response and as an HTTP-only cookie
-  - email: console-backed provider for local development
+  - email: Resend provider for production and console-backed provider for local development
+  - rate limiting: in-memory request buckets for login and password reset
+  - lockout: repeated password failures set `AdminUser.lockedUntil`
+  - audit logging: important auth and invite events are written to `AdminAuditLog`
+  - recovery codes: one-time codes are stored as hashes in `AdminRecoveryCode`
 - future production provider swaps:
-  - password hashing: `argon2`
+  - password hashing: optional `argon2` swap if native dependencies are approved
   - TOTP helper library: `otplib`
-  - email: Resend or another transactional email provider
+  - email: keep Resend or swap the provider behind `AdminEmailService`
 
 Frontend:
 
 - login form
 - invite acceptance form
-- QR code and manual TOTP setup key display for first super-admin setup
+- QR code and manual TOTP setup key display for first super-admin setup and invited admin setup
 - TOTP verification form
+- one-time recovery-code display after first 2FA enrollment
+- recovery-code regeneration form in admin settings
 - password reset form
-- temporary dev-only bypass button for UI work; remove before production
+- dev-only opt-in bypass button for UI work; remove the code during final production polish
 
 ## Session Rules
 
@@ -153,7 +168,11 @@ Frontend:
 - Support explicit logout by revoking the session.
 - Expire sessions automatically.
 - Use short expiration for login challenges and invite tokens.
-- Rate-limit login and TOTP verification attempts.
+- Rate-limit login and password-reset attempts.
+- Lock accounts temporarily after repeated password failures.
+- Lock individual TOTP challenges after repeated verification failures.
+- Store recovery codes only as hashes and consume each code after one use.
+- Store audit logs for important admin auth and invite events.
 
 ## Multi-Restaurant Access
 
@@ -308,7 +327,8 @@ POST /api/v1/admin/auth/verify-bootstrap-2fa
 POST /api/v1/admin/auth/cancel-bootstrap-setup
 POST /api/v1/admin/auth/login
 POST /api/v1/admin/auth/verify-2fa
-POST /api/v1/admin/auth/confirm-invite
+POST /api/v1/admin/auth/setup-invite
+POST /api/v1/admin/auth/verify-invite-2fa
 POST /api/v1/admin/auth/forgot-password
 POST /api/v1/admin/auth/reset-password
 GET  /api/v1/admin/auth/me
@@ -328,11 +348,7 @@ PATCH /api/v1/admin/menu-products/visibility
 
 ## Suggested Implementation Order
 
-1. Refine invite acceptance so invited admins set their own password and enroll TOTP through QR/manual setup before activation.
-2. Add a production email provider for invites and password resets.
-3. Add rate limiting, audit logging, and recovery/lockout policy for login and TOTP attempts.
-4. Replace or harden password hashing for production, preferably with Argon2.
-5. Split stored admin visibility from computed meal orderability if the current force-hide behavior becomes too opaque.
-6. Add pagination controls for admin order and menu-product lists.
-7. Remove the temporary admin bypass before any production deployment.
-8. Add end-to-end tests for admin login, first setup, invite acceptance, menu visibility save/reset, and order management.
+1. Split stored admin visibility from computed meal orderability if the current force-hide behavior becomes too opaque.
+2. Add pagination controls for admin order and menu-product lists.
+3. Remove the temporary admin bypass code during final production polish.
+4. Add end-to-end tests for admin login, first setup, invite acceptance, menu visibility save/reset, and order management.

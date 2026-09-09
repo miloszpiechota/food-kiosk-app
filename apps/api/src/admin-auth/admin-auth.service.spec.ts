@@ -30,8 +30,18 @@ function createPrismaMock() {
     },
     adminInvite: {
       create: jest.fn(),
+      findFirst: jest.fn(),
       findUnique: jest.fn(),
       update: jest.fn(),
+    },
+    adminAuditLog: {
+      create: jest.fn(() => Promise.resolve({})),
+    },
+    adminRecoveryCode: {
+      createMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
     },
     adminPasswordResetToken: {
       create: jest.fn(),
@@ -90,6 +100,8 @@ function createAdminUser(input: {
     twoFactorSecret: input.twoFactorSecret ?? 'JBSWY3DPEHPK3PXP',
     twoFactorEnabled: true,
     isActive: input.isActive ?? true,
+    failedLoginCount: 0,
+    lockedUntil: null,
     lastLoginAt: null,
     createdAt: new Date('2026-07-29T08:00:00.000Z'),
     updatedAt: new Date('2026-07-29T08:00:00.000Z'),
@@ -390,16 +402,11 @@ describe('AdminAuthService', () => {
     });
   });
 
-  it('creates inactive invited users with restaurant access and a confirmation token', async () => {
+  it('creates invite links without setting worker passwords or 2FA secrets', async () => {
     const { email, prisma, service } = createService();
     const restaurantId = '11111111-1111-4111-8111-111111111111';
     prisma.restaurant.findMany.mockResolvedValue([{ id: restaurantId }]);
     prisma.adminUser.findUnique.mockResolvedValue(null);
-    prisma.adminUser.create.mockResolvedValue({
-      id: 'new-admin-1',
-      email: 'worker@example.com',
-      role: AdminRole.ADMIN,
-    });
     prisma.adminInvite.create.mockResolvedValue({
       id: 'invite-1',
       email: 'worker@example.com',
@@ -408,30 +415,189 @@ describe('AdminAuthService', () => {
 
     const response = await service.inviteAdminUser(createSuperAdminSession(), {
       email: 'Worker@Example.com',
-      password: 'StrongPass1!',
       role: AdminRole.ADMIN,
       restaurantIds: [restaurantId],
     });
 
-    expect(prisma.adminUser.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        email: 'worker@example.com',
-        role: AdminRole.ADMIN,
-        isActive: false,
-        twoFactorEnabled: true,
-        restaurantAccess: {
-          create: [{ restaurantId }],
-        },
-      }),
-    });
+    expect(prisma.adminUser.create).not.toHaveBeenCalled();
     expect(prisma.adminInvite.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
+        access: {
+          create: [{ restaurantId }],
+        },
         createdById: 'super-admin-1',
         restaurantId,
       }),
     });
     expect(email.sendInvite).toHaveBeenCalled();
     expect(response.delivery.previewToken).toBeDefined();
+    expect(response).not.toHaveProperty('twoFactorSetup');
+  });
+
+  it('starts invite setup by letting the worker set password and enroll 2FA', async () => {
+    const { prisma, service } = createService();
+    const restaurantId = '11111111-1111-4111-8111-111111111111';
+    const inviteToken = 'a'.repeat(43);
+    prisma.adminInvite.findUnique.mockResolvedValue({
+      id: 'invite-1',
+      email: 'worker@example.com',
+      role: AdminRole.ADMIN,
+      restaurantId,
+      tokenHash: 'hashed',
+      expiresAt: new Date(Date.now() + 60_000),
+      acceptedAt: null,
+      createdById: 'super-admin-1',
+      createdAt: new Date(),
+      access: [{ restaurantId }],
+    });
+    prisma.adminUser.findUnique.mockResolvedValue(null);
+    prisma.adminUser.create.mockImplementation((input) =>
+      Promise.resolve({
+        ...createAdminUser({
+          email: input.data.email,
+          passwordHash: input.data.passwordHash,
+          role: input.data.role,
+          isActive: false,
+        }),
+        twoFactorSecret: input.data.twoFactorSecret,
+        twoFactorEnabled: false,
+        isActive: false,
+      }),
+    );
+    prisma.adminLoginChallenge.create.mockResolvedValue({});
+
+    const response = await service.setupInvite({
+      inviteToken,
+      password: 'SecurePass1!',
+    });
+
+    expect(prisma.adminUser.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        email: 'worker@example.com',
+        isActive: false,
+        twoFactorEnabled: false,
+        restaurantAccess: {
+          create: [{ restaurantId }],
+        },
+      }),
+      include: expect.any(Object),
+    });
+    expect(response.setupToken).toBeTruthy();
+    expect(response.twoFactorSetup.provisioningUri).toContain(
+      'otpauth://totp/',
+    );
+  });
+
+  it('activates invited users only after invite 2FA verification', async () => {
+    const { crypto, prisma, service, totp } = createService();
+    const setupToken = crypto.createToken();
+    const twoFactorSecret = totp.createSecret();
+    const code = totp.generateCode(
+      twoFactorSecret,
+      Math.floor(Date.now() / 1000 / 30),
+    );
+    const adminUser = createAdminUser({
+      email: 'worker@example.com',
+      passwordHash: await crypto.hashPassword('WorkerStrong1!'),
+      role: AdminRole.ADMIN,
+      twoFactorSecret,
+      isActive: false,
+    });
+    adminUser.twoFactorEnabled = false;
+    prisma.adminLoginChallenge.findUnique.mockResolvedValue({
+      id: 'challenge-1',
+      adminUserId: adminUser.id,
+      tokenHash: crypto.hashToken(setupToken),
+      challengeType: AdminLoginChallengeType.TOTP,
+      attemptCount: 0,
+      expiresAt: new Date(Date.now() + 60_000),
+      consumedAt: null,
+      createdAt: new Date(),
+      adminUser,
+    });
+    prisma.adminInvite.findFirst.mockResolvedValue({
+      id: 'invite-1',
+      email: adminUser.email,
+    });
+    prisma.adminInvite.update.mockResolvedValue({});
+    prisma.adminLoginChallenge.update.mockResolvedValue({});
+    prisma.adminUser.update.mockResolvedValue({
+      ...adminUser,
+      isActive: true,
+      twoFactorEnabled: true,
+    });
+    prisma.adminSession.create.mockResolvedValue({});
+    prisma.adminRecoveryCode.createMany.mockResolvedValue({ count: 8 });
+
+    const response = await service.verifyInviteTwoFactor({
+      setupToken,
+      code,
+    });
+
+    expect(prisma.adminInvite.update).toHaveBeenCalledWith({
+      where: { id: 'invite-1' },
+      data: { acceptedAt: expect.any(Date) },
+    });
+    expect(response.status).toBe('AUTHENTICATED');
+    expect(response.recoveryCodes).toHaveLength(8);
+  });
+
+  it('locks an admin account after repeated password failures', async () => {
+    const { crypto, prisma, service } = createService();
+    const adminUser = createAdminUser({
+      email: 'admin@example.com',
+      passwordHash: await crypto.hashPassword('VeryStrong1!'),
+    });
+    adminUser.failedLoginCount = 4;
+    prisma.adminUser.findUnique.mockResolvedValue(adminUser);
+
+    await expect(
+      service.login({
+        email: 'admin@example.com',
+        password: 'WrongPassword1!',
+      }),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(prisma.adminUser.update).toHaveBeenCalledWith({
+      where: { id: adminUser.id },
+      data: {
+        failedLoginCount: 5,
+        lockedUntil: expect.any(Date),
+      },
+    });
+  });
+
+  it('regenerates recovery codes after password and TOTP verification', async () => {
+    const { crypto, prisma, service, totp } = createService();
+    const twoFactorSecret = totp.createSecret();
+    const code = totp.generateCode(
+      twoFactorSecret,
+      Math.floor(Date.now() / 1000 / 30),
+    );
+    const adminUser = createAdminUser({
+      email: 'admin@example.com',
+      passwordHash: await crypto.hashPassword('VeryStrong1!'),
+      twoFactorSecret,
+    });
+    prisma.adminUser.findUnique.mockResolvedValue(adminUser);
+    prisma.adminRecoveryCode.updateMany.mockResolvedValue({ count: 3 });
+    prisma.adminRecoveryCode.createMany.mockResolvedValue({ count: 8 });
+
+    const response = await service.regenerateRecoveryCodes(
+      createSuperAdminSession(),
+      {
+        password: 'VeryStrong1!',
+        code,
+      },
+    );
+
+    expect(prisma.adminRecoveryCode.updateMany).toHaveBeenCalledWith({
+      where: {
+        adminUserId: adminUser.id,
+        consumedAt: null,
+      },
+      data: { consumedAt: expect.any(Date) },
+    });
+    expect(response.recoveryCodes).toHaveLength(8);
   });
 
   it('lists only assigned restaurants for ordinary admins', async () => {
