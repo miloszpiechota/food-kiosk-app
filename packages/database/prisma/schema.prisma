@@ -1,15 +1,6 @@
 generator client {
   provider = "prisma-client-js"
 }
-generator erd {
-  provider                  = "prisma-erd-generator"
-  output                    = "../../../docs/diagrams/erd/database-erd.mmd"
-  showIndexes               = true
-  usePrismaNames            = true
-  includeRelationFromFields = true
-  ignoreEnums               = true
-  disableEmoji              = true
-}
 
 datasource db {
   provider = "postgresql"
