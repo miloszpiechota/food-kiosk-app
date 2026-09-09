@@ -7,6 +7,7 @@ import {
   PaymentResultPage,
   type CheckoutReturnStatus,
 } from "../pages/PaymentResultPage/PaymentResultPage";
+import { AdminPanelPage } from "../pages/AdminPanelPage/AdminPanelPage";
 import {
   defaultLocale,
   type SupportedLocale,
@@ -38,7 +39,8 @@ type AppRoute =
   | "menu"
   | "product-details"
   | "basket-review"
-  | "payment-result";
+  | "payment-result"
+  | "admin-panel";
 export type OrderMode = "dine-in" | "take-out";
 
 interface PaymentReturnState {
@@ -202,6 +204,10 @@ export function AppRouter() {
     setRoute("welcome");
   };
 
+  const handleAdminPanelOpen = () => {
+    setRoute("admin-panel");
+  };
+
   const handleUpdateBasketItemQuantity = async (
     basketItemId: string,
     quantity: number,
@@ -271,10 +277,21 @@ export function AppRouter() {
     );
   }
 
+  if (route === "admin-panel") {
+    return (
+      <AdminPanelPage
+        onBackToKiosk={() => {
+          setRoute("welcome");
+        }}
+      />
+    );
+  }
+
   if (route === "welcome") {
     return renderWithAccessibility(
       <WelcomePage
         locale={locale}
+        onAdminPanelOpen={handleAdminPanelOpen}
         onAccessibilityOpen={() => setIsAccessibilityOpen(true)}
         onLocaleChange={setLocale}
         onSelectOrderMode={handleOrderModeSelect}

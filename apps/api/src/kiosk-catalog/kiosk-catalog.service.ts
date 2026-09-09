@@ -254,6 +254,21 @@ export class KioskCatalogService {
                     modifierGroups: true,
                   },
                 },
+                productGroups: {
+                  include: {
+                    options: {
+                      where: {
+                        isAvailable: true,
+                        product: {
+                          isAvailable: true,
+                        },
+                      },
+                      select: {
+                        productId: true,
+                      },
+                    },
+                  },
+                },
               },
             },
           },
@@ -267,12 +282,18 @@ export class KioskCatalogService {
 
     const restaurant = menuCategory.menu.restaurant;
     const resolvedLocale = this.resolveLocale(locale, restaurant.defaultLocale);
+    const visibleProductIds = new Set(
+      menuCategory.menuProducts.map((menuProduct) => menuProduct.productId),
+    );
+    const orderableProducts = menuCategory.menuProducts.filter((menuProduct) =>
+      this.isMenuProductOrderableInMenu(menuProduct, visibleProductIds),
+    );
 
     return {
       menuCategoryId: menuCategory.id,
       categoryId: menuCategory.categoryId,
       locale: resolvedLocale,
-      products: menuCategory.menuProducts.map((menuProduct) =>
+      products: orderableProducts.map((menuProduct) =>
         this.toMenuProductSummary(
           menuProduct,
           restaurant.currencyCode,
@@ -477,13 +498,40 @@ export class KioskCatalogService {
 
     const restaurant = menuProduct.menuCategory.menu.restaurant;
     const resolvedLocale = this.resolveLocale(locale, restaurant.defaultLocale);
+    const visibleProductIds = new Set(
+      (
+        await this.prisma.menuProduct.findMany({
+          where: {
+            isVisible: true,
+            menuCategory: {
+              menuId: menuProduct.menuCategory.menuId,
+            },
+            product: {
+              isAvailable: true,
+            },
+          },
+          select: {
+            productId: true,
+          },
+        })
+      ).map((visibleMenuProduct) => visibleMenuProduct.productId),
+    );
+    const productGroups = menuProduct.product.productGroups.map((group) => ({
+      ...group,
+      options: group.options.filter((option) =>
+        visibleProductIds.has(option.productId),
+      ),
+    }));
     const summary = this.toMenuProductSummary(
       menuProduct,
       restaurant.currencyCode,
       resolvedLocale,
       restaurant.defaultLocale,
     );
-    this.validateMealDefinition(menuProduct.product);
+    this.validateMealDefinition({
+      type: menuProduct.product.type,
+      productGroups,
+    });
 
     return {
       ...summary,
@@ -492,7 +540,7 @@ export class KioskCatalogService {
       categoryId: menuProduct.menuCategory.categoryId,
       locale: resolvedLocale,
       isAvailable: menuProduct.product.isAvailable,
-      groups: menuProduct.product.productGroups.map((group) => ({
+      groups: productGroups.map((group) => ({
         id: group.id,
         code: group.productGroupTemplate.code,
         name:
@@ -594,6 +642,50 @@ export class KioskCatalogService {
         message: 'This meal is not configured correctly.',
       });
     }
+  }
+
+  private isMenuProductOrderableInMenu(
+    menuProduct: {
+      productId: string;
+      product: {
+        type: string;
+        productGroups?: Array<{
+          minSelections: number;
+          maxSelections: number;
+          selectionMode: string;
+          isRequired: boolean;
+          options: Array<{
+            productId: string;
+          }>;
+        }>;
+      };
+    },
+    visibleProductIds: Set<string>,
+  ): boolean {
+    if (menuProduct.product.type === 'ITEM') {
+      return true;
+    }
+
+    const productGroups = menuProduct.product.productGroups ?? [];
+    const validGroupCount =
+      productGroups.length >= 2 && productGroups.length <= 4;
+
+    if (!validGroupCount) {
+      return false;
+    }
+
+    return productGroups.every((group) => {
+      const validGroup =
+        group.minSelections === 1 &&
+        group.maxSelections === 1 &&
+        group.selectionMode === 'SINGLE' &&
+        group.isRequired;
+      const visibleOptionCount = group.options.filter((option) =>
+        visibleProductIds.has(option.productId),
+      ).length;
+
+      return validGroup && visibleOptionCount >= group.minSelections;
+    });
   }
 
   private toMealSizeVariant(

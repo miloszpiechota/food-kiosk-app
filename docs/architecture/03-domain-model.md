@@ -4,12 +4,12 @@
 This document defines the core domain entities for the Food Ordering Kiosk App and describes how they relate to each other at a high level.
 
 ## Summary
-The MVP domain model centers on one restaurant with multiple menus, reusable categories, reusable products, configurable meals, reusable meal groups, product personalization, basket building, order creation, payment verification, localization support, and administrator access. The model should remain simple enough for an MVP while leaving room for later growth such as upsell logic.
+The MVP domain model centers on many restaurants with restaurant-owned menus, reusable categories, reusable products, configurable meals, reusable meal groups, product personalization, basket building, order creation, payment verification, localization support, and administrator access. The model should remain simple enough for an MVP while leaving room for later growth such as upsell logic.
 
 ## Core Entities
 
 ### Restaurant
-Represents the single restaurant that owns the kiosk, menus, categories, products, and configuration in the MVP.
+Represents a restaurant that owns kiosks, menus, categories, products, orders, and configuration.
 
 Suggested attributes:
 - `id`
@@ -464,7 +464,8 @@ Represents an authenticated administrator with access to the admin panel.
 
 Example responsibilities:
 - Authenticate into the protected admin area
-- Manage incoming orders
+- Manage incoming orders for assigned restaurants
+- Invite or manage admin users when acting as a super admin
 - Operate within the admin workflow
 
 Suggested attributes:
@@ -472,10 +473,51 @@ Suggested attributes:
 - `email`
 - `passwordHash`
 - `role`
+- `twoFactorSecret`
+- `twoFactorEnabled`
 - `isActive`
 - `lastLoginAt`
 - `createdAt`
 - `updatedAt`
+
+Suggested role examples:
+- `super_admin`
+- `admin`
+
+### Admin Restaurant Access
+Represents which restaurants an admin user can operate.
+
+Suggested attributes:
+- `id`
+- `adminUserId`
+- `restaurantId`
+- `createdAt`
+
+### Admin Invite
+Represents a super-admin-created invitation for a selected worker.
+
+Suggested attributes:
+- `id`
+- `email`
+- `role`
+- `restaurantId`
+- `tokenHash`
+- `expiresAt`
+- `acceptedAt`
+- `createdById`
+- `createdAt`
+
+### Admin Login Challenge
+Represents a short-lived authentication challenge used before the final admin session exists.
+
+Suggested attributes:
+- `id`
+- `adminUserId`
+- `tokenHash`
+- `challengeType`
+- `expiresAt`
+- `consumedAt`
+- `createdAt`
 
 ### Admin Session
 Represents an authenticated admin access session.
@@ -484,6 +526,7 @@ Suggested attributes:
 - `id`
 - `adminUserId`
 - `tokenId`
+- `tokenHash`
 - `expiresAt`
 - `createdAt`
 - `revokedAt`
@@ -523,6 +566,10 @@ Suggested attributes:
 - One `Order` has one current payment state.
 - One `Payment` belongs to one `Order`.
 - One `Admin User` can have one or more `Admin Sessions` over time.
+- One `Admin User` can have many `Admin Restaurant Access` records.
+- One `Restaurant` can be assigned to many `Admin Users`.
+- One `Admin Invite` may target one restaurant for restaurant-scoped admins.
+- One `Admin Login Challenge` belongs to one `Admin User`.
 
 ## Status Concepts
 
@@ -579,6 +626,9 @@ classDiagram
     class OrderItem
     class Payment
     class AdminUser
+    class AdminRestaurantAccess
+    class AdminInvite
+    class AdminLoginChallenge
     class AdminSession
 
     Restaurant "1" --> "*" Menu
@@ -612,12 +662,16 @@ classDiagram
     BasketItem "*" --> "1" Product
     Order "1" --> "*" OrderItem
     Order "1" --> "1" Payment
+    AdminUser "1" --> "*" AdminRestaurantAccess
+    Restaurant "1" --> "*" AdminRestaurantAccess
+    AdminUser "1" --> "*" AdminInvite
+    AdminUser "1" --> "*" AdminLoginChallenge
     AdminUser "1" --> "*" AdminSession
 ```
 
 ## Design Notes
 - `Order status` and `payment status` should remain separate because restaurant workflow and payment truth are different concerns.
-- The MVP supports only one restaurant, but `Restaurant` should still exist as an explicit root entity because menus, categories, products, scheduling, and kiosk configuration all belong to it.
+- The MVP now supports many restaurants. `Restaurant` remains the explicit root entity because menus, categories, products, scheduling, orders, and kiosk configuration all belong to it.
 - Products do not belong directly to one active menu category. Instead, products should be assigned through `Menu Product` and `Menu Category` so the same product can appear in multiple menus and categories.
 - `Meal` and `large meal` are intentionally modeled as separate product types because they can have different pricing, descriptions, and images.
 - The same `Product` may be sold standalone and also reused as a selectable option inside a meal.
@@ -630,14 +684,20 @@ classDiagram
 - Product ingredient rules should support products that have no ingredients at all.
 - Both adding and removing ingredients may change the final price, so removal and extra pricing rules should be stored explicitly.
 - Availability should be manageable at menu, menu-category, menu-product, meal-option, product-ingredient, and modifier-option level so admins can hide or schedule parts of the catalog as unavailable.
+- Public kiosk reads should treat a meal or large meal as unavailable when any required group has no available option after product and group-option visibility is resolved.
 - Dedicated availability-rule entities are preferable here because recurring date/time availability is a first-class concept and should not be reduced to a single boolean flag.
 - One-off exceptions such as holidays, temporary closures, and one-day overrides should be modeled separately from recurring weekly rules so schedule resolution stays explicit and maintainable.
 - `Basket Item` and `Order Item` should store configuration snapshots so selected meal groups and ingredient changes are preserved even if the catalog changes later.
 - `Order Items` should store a snapshot of product name and price at purchase time rather than depending only on future catalog state.
 - `Basket` is modeled as temporary session data, while `Order` is persistent business data.
 - `Admin Session` is modeled separately so session expiration and revocation remain explicit.
+- Admin access should be invite-based. Do not email raw passwords.
+- Admin login requires email, password, and mandatory TOTP verification before a full session is issued.
+- TOTP setup uses a QR code with a manual authenticator key fallback for first super-admin setup.
+- The current invite implementation lets invited admins set their own password and enroll TOTP before activation.
+- Temporary admin-panel bypass behavior is development-only, opt-in, and is not part of the production domain model.
 - Multilingual kiosk support is easier to scale if translatable catalog fields are stored in dedicated translation tables instead of hardcoding one language per row.
 - Customer language choice is primarily a kiosk session concern rather than a core business entity, and it should persist through the active ordering flow before resetting to a default state for the next customer.
 
 ## Status
-Planned. This document defines intended domain structure and does not imply implementation is complete.
+Partially implemented. This document defines the intended domain structure and includes several entities already present in the Prisma schema, but it does not imply every admin workflow is complete.

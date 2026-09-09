@@ -8,7 +8,7 @@ The intended stack is:
 - Backend: NestJS and TypeScript in `apps/api`
 - Database: PostgreSQL with Prisma in `packages/database`
 - Tooling: pnpm workspace, Docker Compose for local PostgreSQL, GitHub Actions CI
-- Planned payments: Stripe test mode only, with payment status confirmed through a verified backend webhook
+- Payments: Stripe test mode only, with payment status confirmed through a verified backend webhook
 
 ## Product Goal
 Build a realistic food ordering kiosk that demonstrates full-stack engineering skills:
@@ -16,7 +16,8 @@ Build a realistic food ordering kiosk that demonstrates full-stack engineering s
 - Product categories, menu items, meals, large meals, modifiers, and extras
 - Cart and checkout flow
 - Stripe test checkout and verified webhook confirmation
-- Admin order management
+- Multi-restaurant admin authentication, authorization, and order management
+- Super-admin invite flow with mandatory two-factor authentication
 - Accessibility-aware kiosk UI
 - Tests, CI, Docker, and deployment documentation
 
@@ -25,24 +26,34 @@ Keep this section honest. Update it when code changes.
 
 Implemented:
 - Monorepo workspace with `apps/web`, `apps/api`, `packages/database`, `docs`, `backlog`, and `.ai`
-- React/Vite frontend shell in `apps/web`
+- React/Vite customer kiosk frontend in `apps/web`
 - NestJS backend in `apps/api`
 - Prisma schema in `packages/database/prisma/schema.prisma`
 - Prisma seed data in `packages/database/prisma/seed.mjs`
 - PostgreSQL service in `docker-compose.yml`
 - Kiosk catalog API module with active menu, category, product list, and product detail endpoints
+- Customer kiosk UI screens for welcome, menu browsing, product details, basket review, and payment result
+- Frontend catalog integration with backend menu and product detail endpoints
+- Backend basket module with basket creation, configured item writes, quantity updates, removal, and subtotal recalculation
+- Backend order module with immutable order snapshot creation from an active basket
+- Stripe Checkout test-payment slice with checkout session creation and verified webhook payment confirmation
+- Frontend payment result polling after Stripe redirects back to the kiosk
+- Meal builder backend validation, pricing, configuration snapshots, and fingerprint-based basket item merging
+- Admin auth backend with first super-admin bootstrap, QR/manual TOTP setup, invite-based worker password/2FA enrollment, password login plus mandatory TOTP challenge, recovery codes, password reset, rate limiting, audit logs, session guards, logout, restaurant listing, admin user listing, and restaurant-scoped menu visibility endpoints
+- Admin password hashing uses Node `scrypt` for new hashes and still verifies legacy PBKDF2 hashes for migration compatibility
+- Admin panel frontend with backend-backed login, first setup, invite acceptance with password and QR/manual 2FA enrollment, password reset, order search/filter/detail/status management, menu visibility save/reset controls, and a dev-only opt-in bypass for UI work
+- Resend-backed production email delivery option for admin invites and password reset, with console delivery for local development
+- Backend-backed admin order list, search, filtering, detail, and validated order status management
+- Kiosk catalog filtering that hides meals when a required meal group has no visible menu option
 - Product documentation in `docs/product`
 - Architecture documentation in `docs/architecture`
 - GitHub Actions CI in `.github/workflows/ci.yml`
 - Initial unit/e2e tests for API areas
 
 Planned or incomplete:
-- Production kiosk UI screens
-- Frontend catalog integration
-- Cart state and order summary
-- Backend basket, order, payment, admin, and auth modules
-- Stripe Checkout and verified webhook handling
-- Admin UI and protected admin workflows
+- Backend-backed edit mode for existing configured basket items
+- Optional Argon2 password hashing swap if native dependencies are approved for the deployment environment
+- Removal of the temporary admin-panel bypass code during final production polish
 - End-to-end browser tests
 - Accessibility automation
 - Deployment setup and deployment docs
@@ -91,12 +102,12 @@ Use this sequence to keep work small and portfolio-friendly:
 
 1. Product docs in `docs/product` - mostly created
 2. AI agent instructions in `.ai` - this instruction set
-3. Frontend shell in `apps/web` - present but still Vite starter content
+3. Frontend shell in `apps/web` - implemented
 4. Mock menu data - present as Prisma seed data
-5. Kiosk UI screens - planned
-6. Cart state - planned
-7. Backend API - catalog API started, other modules planned
-8. PostgreSQL and Prisma - schema and seed started
+5. Kiosk UI screens - implemented for the customer ordering flow
+6. Cart state - implemented through backend basket state and frontend rendering state
+7. Backend API - customer catalog, basket, order, Stripe payment, admin auth, admin menu visibility, and admin order endpoints implemented
+8. PostgreSQL and Prisma - schema, migrations, seed data, and Prisma integration implemented
 9. Tests - partial
 10. Docker and CI/CD - local Postgres and CI started; deployment pipeline planned
 11. Deploy frontend and backend - planned

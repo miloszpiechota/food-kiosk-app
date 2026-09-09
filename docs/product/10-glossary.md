@@ -6,6 +6,9 @@ The protected area of the application used by restaurant administrators to view 
 ## Administrator
 A user with authorized access to the admin panel for managing restaurant operations in the system.
 
+## Admin Invite
+A super-admin-created invitation link that allows a selected worker to create admin credentials and complete two-factor authentication setup.
+
 ## Basket
 The temporary collection of selected products, meal choices, and personalization details chosen by a customer before checkout. Also commonly called a cart.
 
@@ -64,7 +67,13 @@ The state of payment verification, such as pending, paid, failed, cancelled, or 
 A purchasable catalog entity. In this project, a product can be a standalone item, a meal, or a large meal.
 
 ## Restaurant
-The single restaurant that owns the menus, categories, products, and kiosk configuration in the MVP.
+A restaurant that owns menus, categories, products, kiosk configuration, and orders.
+
+## Super Admin
+A company-level administrator who can invite admins, assign restaurant access, and manage platform-level administration.
+
+## Two-Factor Authentication
+An additional authentication step after email and password. In this project, the admin flow uses time-based one-time codes from an authenticator app, with QR-code setup and manual-key fallback where setup is shown.
 
 ## Stripe Checkout
 Stripe's hosted payment flow used to handle customer payment in test mode for this project.

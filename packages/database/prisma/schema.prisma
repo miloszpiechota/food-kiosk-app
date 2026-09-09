@@ -73,9 +73,16 @@ enum PaymentProvider {
 }
 
 enum AdminRole {
-  ADMIN @map("admin")
+  SUPER_ADMIN @map("super_admin")
+  ADMIN       @map("admin")
 
   @@map("admin_role")
+}
+
+enum AdminLoginChallengeType {
+  TOTP @map("totp")
+
+  @@map("admin_login_challenge_type")
 }
 
 enum AvailabilityOverrideType {
@@ -87,19 +94,22 @@ enum AvailabilityOverrideType {
 }
 
 model Restaurant {
-  id            String     @id @default(uuid()) @db.Uuid
-  name          String     @db.Text
-  slug          String     @unique @db.Text
-  timezone      String     @db.Text
-  defaultLocale String     @map("default_locale") @db.Text
-  currencyCode  String     @map("currency_code") @db.Text
-  isActive      Boolean    @default(true) @map("is_active")
-  createdAt     DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt     DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
-  menus         Menu[]
-  categories    Category[]
-  products      Product[]
-  orders        Order[]
+  id                String                        @id @default(uuid()) @db.Uuid
+  name              String                        @db.Text
+  slug              String                        @unique @db.Text
+  timezone          String                        @db.Text
+  defaultLocale     String                        @map("default_locale") @db.Text
+  currencyCode      String                        @map("currency_code") @db.Text
+  isActive          Boolean                       @default(true) @map("is_active")
+  createdAt         DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  menus             Menu[]
+  categories        Category[]
+  products          Product[]
+  orders            Order[]
+  adminAccess       AdminRestaurantAccess[]
+  adminInvites      AdminInvite[]
+  adminInviteAccess AdminInviteRestaurantAccess[]
 
   @@map("restaurants")
 }
@@ -588,23 +598,122 @@ model Payment {
 }
 
 model AdminUser {
-  id           String         @id @default(uuid()) @db.Uuid
-  email        String         @unique @db.Text
-  passwordHash String         @map("password_hash") @db.Text
-  role         AdminRole      @default(ADMIN)
-  isActive     Boolean        @default(true) @map("is_active")
-  lastLoginAt  DateTime?      @map("last_login_at") @db.Timestamptz(6)
-  createdAt    DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt    DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
-  sessions     AdminSession[]
+  id                  String                    @id @default(uuid()) @db.Uuid
+  email               String                    @unique @db.Text
+  passwordHash        String                    @map("password_hash") @db.Text
+  role                AdminRole                 @default(ADMIN)
+  twoFactorSecret     String?                   @map("two_factor_secret") @db.Text
+  twoFactorEnabled    Boolean                   @default(true) @map("two_factor_enabled")
+  isActive            Boolean                   @default(true) @map("is_active")
+  failedLoginCount    Int                       @default(0) @map("failed_login_count")
+  lockedUntil         DateTime?                 @map("locked_until") @db.Timestamptz(6)
+  lastLoginAt         DateTime?                 @map("last_login_at") @db.Timestamptz(6)
+  createdAt           DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  restaurantAccess    AdminRestaurantAccess[]
+  createdInvites      AdminInvite[]             @relation("AdminInviteCreator")
+  loginChallenges     AdminLoginChallenge[]
+  passwordResetTokens AdminPasswordResetToken[]
+  recoveryCodes       AdminRecoveryCode[]
+  sessions            AdminSession[]
+  auditLogs           AdminAuditLog[]           @relation("AdminAuditActor")
 
   @@map("admin_users")
+}
+
+model AdminRestaurantAccess {
+  id           String     @id @default(uuid()) @db.Uuid
+  adminUserId  String     @map("admin_user_id") @db.Uuid
+  restaurantId String     @map("restaurant_id") @db.Uuid
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  adminUser    AdminUser  @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([adminUserId, restaurantId])
+  @@index([adminUserId])
+  @@index([restaurantId])
+  @@map("admin_restaurant_access")
+}
+
+model AdminInvite {
+  id           String                        @id @default(uuid()) @db.Uuid
+  email        String                        @db.Text
+  role         AdminRole
+  restaurantId String?                       @map("restaurant_id") @db.Uuid
+  tokenHash    String                        @unique @map("token_hash") @db.Text
+  expiresAt    DateTime                      @map("expires_at") @db.Timestamptz(6)
+  acceptedAt   DateTime?                     @map("accepted_at") @db.Timestamptz(6)
+  createdById  String                        @map("created_by_id") @db.Uuid
+  createdAt    DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  restaurant   Restaurant?                   @relation(fields: [restaurantId], references: [id], onDelete: SetNull)
+  createdBy    AdminUser                     @relation("AdminInviteCreator", fields: [createdById], references: [id])
+  access       AdminInviteRestaurantAccess[]
+
+  @@index([email, expiresAt, acceptedAt])
+  @@index([createdById])
+  @@index([restaurantId])
+  @@map("admin_invites")
+}
+
+model AdminInviteRestaurantAccess {
+  id            String      @id @default(uuid()) @db.Uuid
+  adminInviteId String      @map("admin_invite_id") @db.Uuid
+  restaurantId  String      @map("restaurant_id") @db.Uuid
+  createdAt     DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  adminInvite   AdminInvite @relation(fields: [adminInviteId], references: [id], onDelete: Cascade)
+  restaurant    Restaurant  @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+
+  @@unique([adminInviteId, restaurantId])
+  @@index([adminInviteId])
+  @@index([restaurantId])
+  @@map("admin_invite_restaurant_access")
+}
+
+model AdminLoginChallenge {
+  id            String                  @id @default(uuid()) @db.Uuid
+  adminUserId   String                  @map("admin_user_id") @db.Uuid
+  tokenHash     String                  @unique @map("token_hash") @db.Text
+  challengeType AdminLoginChallengeType @map("challenge_type")
+  attemptCount  Int                     @default(0) @map("attempt_count")
+  expiresAt     DateTime                @map("expires_at") @db.Timestamptz(6)
+  consumedAt    DateTime?               @map("consumed_at") @db.Timestamptz(6)
+  createdAt     DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  adminUser     AdminUser               @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, expiresAt, consumedAt])
+  @@map("admin_login_challenges")
+}
+
+model AdminPasswordResetToken {
+  id          String    @id @default(uuid()) @db.Uuid
+  adminUserId String    @map("admin_user_id") @db.Uuid
+  tokenHash   String    @unique @map("token_hash") @db.Text
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, expiresAt, consumedAt])
+  @@map("admin_password_reset_tokens")
+}
+
+model AdminRecoveryCode {
+  id          String    @id @default(uuid()) @db.Uuid
+  adminUserId String    @map("admin_user_id") @db.Uuid
+  codeHash    String    @unique @map("code_hash") @db.Text
+  consumedAt  DateTime? @map("consumed_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, consumedAt])
+  @@map("admin_recovery_codes")
 }
 
 model AdminSession {
   id          String    @id @default(uuid()) @db.Uuid
   adminUserId String    @map("admin_user_id") @db.Uuid
   tokenId     String    @unique @map("token_id") @db.Uuid
+  tokenHash   String    @unique @map("token_hash") @db.Text
   expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
@@ -612,4 +721,20 @@ model AdminSession {
 
   @@index([adminUserId, expiresAt, revokedAt])
   @@map("admin_sessions")
+}
+
+model AdminAuditLog {
+  id               String     @id @default(uuid()) @db.Uuid
+  actorAdminUserId String?    @map("actor_admin_user_id") @db.Uuid
+  action           String     @db.Text
+  result           String     @db.Text
+  targetType       String?    @map("target_type") @db.Text
+  targetId         String?    @map("target_id") @db.Text
+  metadata         Json?      @db.JsonB
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  actor            AdminUser? @relation("AdminAuditActor", fields: [actorAdminUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorAdminUserId, createdAt])
+  @@index([action, createdAt])
+  @@map("admin_audit_logs")
 }

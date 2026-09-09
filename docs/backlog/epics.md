@@ -42,20 +42,28 @@ Support Stripe Checkout in test mode with secure backend-driven payment confirma
 Provide secure administrator access to the protected admin area.
 
 ### Scope
-- Admin registration
+- Super-admin-created invite links
+- Invite acceptance
 - Admin login
+- Mandatory two-factor authentication
+- TOTP QR setup for Google Authenticator-compatible apps
+- Future QR-assisted login through trusted-device challenges
 - Session handling
 - Auto logout behavior
 - Protected admin routes
+- Restaurant-scoped authorization
 
 ## EPIC-005: Admin Order Management
 Allow administrators to view and manage incoming kiosk orders.
 
 ### Scope
 - Order list
+- Order search and filtering
 - Order details
 - Order status management
 - Payment status visibility
+- Payment provider and payment identifier visibility
+- Ordered item, id, price, and configuration visibility
 
 ## EPIC-006: Accessibility Foundation
 Establish the accessibility-oriented foundations of the kiosk and admin experiences.
@@ -90,11 +98,11 @@ Support development with a maintainable monorepo structure, documentation, testi
 - Environment configuration
 
 ## EPIC-009: Menu Structure And Availability
-Support one restaurant with multiple menus, reusable categories and products, menu-specific pricing, and scheduled availability.
+Support many restaurants with restaurant-owned menus, reusable categories and products, menu-specific pricing, and scheduled availability.
 
 ### Scope
-- One restaurant as the root business owner
-- Multiple menus
+- Many restaurants as catalog and order owners
+- Multiple menus per restaurant
 - Shared categories across menus
 - Shared products across menus and categories
 - Menu-specific product pricing
@@ -102,6 +110,7 @@ Support one restaurant with multiple menus, reusable categories and products, me
 - Date and time-based category availability inside menus
 - Date and time-based product availability inside menus
 - Admin controls for hide, unhide, and scheduling
+- Meal availability resolution when hidden products remove all options from a required group
 
 ## Later / Post-MVP
 

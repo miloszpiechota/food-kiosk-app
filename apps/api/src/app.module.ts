@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AdminAuthModule } from './admin-auth/admin-auth.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { KioskBasketModule } from './kiosk-basket/kiosk-basket.module';
@@ -14,6 +15,7 @@ import { PrismaModule } from './prisma/prisma.module';
     KioskBasketModule,
     KioskOrderModule,
     PaymentsModule,
+    AdminAuthModule,
   ],
   controllers: [AppController],
   providers: [AppService],

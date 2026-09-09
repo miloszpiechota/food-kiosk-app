@@ -30,16 +30,22 @@ This document breaks the MVP scope into user-centered stories that can later be 
 - `US-020`: As a customer, I want payment failures to be explained clearly so that I know what to do next without frustration.
 
 ## EPIC-004: Admin Authentication
-- `US-021`: As an administrator, I want to register an admin account so that I can access the admin area.
-- `US-022`: As an administrator, I want to log in securely so that only authorized users can manage orders.
-- `US-023`: As an administrator, I want my session to expire after a limited time so that the admin area is safer on shared devices.
-- `US-024`: As an administrator, I want to log out clearly so that the next kiosk or device user cannot access my session.
+- `US-021`: As a super admin, I want to invite selected restaurant workers by email so that only approved users can access the admin area.
+- `US-022`: As an invited administrator, I want to accept an invite link and set my own password so that credentials are not emailed to me.
+- `US-023`: As an administrator, I want to set up mandatory two-factor authentication with a QR code so that my account is harder to compromise.
+- `US-024`: As an administrator, I want to log in with email, password, and a two-factor code so that only authorized users can manage restaurant operations.
+- `US-024A`: As an administrator, I may want QR-assisted login from a trusted device so that future login can be faster without weakening account security.
+- `US-024B`: As an administrator, I want my session to expire after a limited time so that the admin area is safer on shared devices.
+- `US-024C`: As an administrator, I want to log out clearly so that the next kiosk or device user cannot access my session.
+- `US-024D`: As a super admin, I want to assign admins to restaurants so that workers only access restaurants they are responsible for.
 
 ## EPIC-005: Admin Order Management
 - `US-025`: As an administrator, I want to view incoming orders so that I can manage restaurant workflow.
 - `US-026`: As an administrator, I want to open an order and review its details so that I can understand the selected products, meal choices, and personalizations.
 - `US-027`: As an administrator, I want to update order status so that I can track progress from new order to completion.
 - `US-028`: As an administrator, I want to see payment status separately from order status so that I do not confuse operational progress with payment confirmation.
+- `US-028A`: As an administrator, I want to search and filter orders by restaurant, status, payment status, date, and order number so that I can quickly find the right order.
+- `US-028B`: As an administrator, I want order details to show ordered items, ids, payment method, payment identifiers, payment status, total price, and configuration details so that I have the information needed for restaurant operations and support.
 
 ## EPIC-006: Accessibility Foundation
 - `US-029`: As a customer, I want the kiosk to be touch-friendly so that I can use it comfortably on a terminal screen.
@@ -63,12 +69,14 @@ This document breaks the MVP scope into user-centered stories that can later be 
 ## EPIC-009: Menu Structure And Availability
 - `US-042`: As a customer, I want to see only the menus that are currently available so that I can order from the correct offering.
 - `US-043`: As a customer, I want to see only the categories and products that are currently available so that I do not try to order unavailable options.
-- `US-044`: As an administrator, I want the restaurant to support multiple menus so that different offerings can exist at different times.
+- `US-044`: As a super admin, I want the platform to support many restaurants so that each restaurant can have its own catalog, orders, and admin users.
+- `US-044A`: As an administrator, I want the restaurant to support multiple menus so that different offerings can exist at different times.
 - `US-045`: As an administrator, I want to reuse categories across menus so that I do not duplicate catalog structure unnecessarily.
 - `US-046`: As an administrator, I want to reuse products across menus and categories so that I do not duplicate product records unnecessarily.
 - `US-047`: As an administrator, I want products to have menu-specific pricing so that the same product can cost differently in different menus.
 - `US-048`: As an administrator, I want to schedule menus, categories, and products by date and time so that the kiosk reflects the restaurant's real availability.
 - `US-049`: As an administrator, I want to hide or unhide menus, categories, and products immediately when needed so that unavailable offerings disappear from the kiosk quickly.
+- `US-050`: As a customer, I should not see a meal when one of its required groups has no visible and available option so that I cannot order an impossible meal.
 
 ## Later / Post-MVP
 - `US-LATER-001`: As a customer, I want to see relevant upsell suggestions before finalizing basket choices so that I can easily add complementary products.

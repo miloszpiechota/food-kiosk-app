@@ -546,7 +546,7 @@ function ConfigurationDetails({
   return (
     <div className="mt-4 space-y-3 rounded-2xl border border-border bg-background/50 p-4">
       {configuration.productType && (
-        <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-black uppercase tracking-[0.1em] text-primary">
+        <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-primary">
           {configuration.productType.replace("_", " ")}
         </span>
       )}
@@ -697,3 +697,4 @@ function OrderModeChip({ orderMode }: { orderMode: OrderMode }) {
     </div>
   );
 }
+

@@ -72,7 +72,7 @@ The project now includes a real development seed script.
 
 Current seed data includes:
 
-- one restaurant
+- one demo restaurant initially; the model supports many restaurants
 - one active menu
 - localized category data
 - standalone products

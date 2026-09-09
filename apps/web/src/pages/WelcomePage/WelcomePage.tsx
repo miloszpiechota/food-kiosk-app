@@ -1,4 +1,5 @@
-import { CircleHelp, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { type ReactNode } from "react";
+import { CircleHelp, Shield, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import type { OrderMode } from "../../app/router";
 import { AccessibilityButton } from "../../features/accessibility/components/AccessibilityButton";
 import { BrandArea } from "../../shared/components/BrandArea";
@@ -10,6 +11,7 @@ import { KioskShell } from "../../shared/layout/KioskShell";
 
 interface WelcomePageProps {
   locale: SupportedLocale;
+  onAdminPanelOpen: () => void;
   onAccessibilityOpen: () => void;
   onLocaleChange: (locale: SupportedLocale) => void;
   onSelectOrderMode: (mode: OrderMode) => void;
@@ -17,6 +19,7 @@ interface WelcomePageProps {
 
 export function WelcomePage({
   locale,
+  onAdminPanelOpen,
   onAccessibilityOpen,
   onLocaleChange,
   onSelectOrderMode,
@@ -43,6 +46,16 @@ export function WelcomePage({
           <CircleHelp aria-hidden="true" className="size-6" />
         </IconButton>
       </div>
+
+      <button
+        type="button"
+        onClick={onAdminPanelOpen}
+        aria-label="Go to admin panel"
+        className={`absolute bottom-6 right-6 z-20 inline-flex min-h-14 items-center gap-3 rounded-2xl border border-border bg-card/85 px-5 py-3 text-base font-semibold text-foreground shadow-xl shadow-black/20 transition hover:border-primary hover:text-primary sm:bottom-8 sm:right-8 ${focusRing}`}
+      >
+        <Shield aria-hidden="true" className="size-5" />
+        <span className="hidden sm:inline">Go to admin panel</span>
+      </button>
 
       <section
         aria-labelledby="welcome-heading"
@@ -84,7 +97,7 @@ export function WelcomePage({
 
 interface OrderModeButtonProps {
   accent: "primary" | "secondary";
-  icon: React.ReactNode;
+  icon: ReactNode;
   label: string;
   onClick: () => void;
 }

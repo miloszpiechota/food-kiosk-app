@@ -44,7 +44,7 @@ export function LanguageSelector({
   const dialog = isOpen
     ? createPortal(
         <div
-          className="fixed inset-0 z-[1000] grid place-items-center bg-background/75 p-4"
+          className="fixed inset-0 z-1000 grid place-items-center bg-background/75 p-4"
           role="presentation"
           onMouseDown={(event) => {
             if (event.target === event.currentTarget) {
@@ -125,3 +125,4 @@ export function LanguageSelector({
     </>
   );
 }
+

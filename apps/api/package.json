@@ -8,7 +8,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "prisma:generate": "prisma generate --schema ../../packages/database/prisma/schema.prisma",
+    "prisma:generate": "prisma generate --generator client --schema ../../packages/database/prisma/schema.prisma",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",

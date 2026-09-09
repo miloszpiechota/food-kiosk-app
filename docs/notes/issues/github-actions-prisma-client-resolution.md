@@ -77,10 +77,11 @@ The root `pnpm db:generate` script must generate both workspace client instances
 "db:generate": "pnpm --filter @food-kiosk/database prisma:generate && pnpm --filter @food-kiosk/api prisma:generate"
 ```
 
-The API package points Prisma at the shared schema:
+The API package points Prisma at the shared schema and explicitly limits this
+second run to the client generator:
 
 ```json
-"prisma:generate": "prisma generate --schema ../../packages/database/prisma/schema.prisma"
+"prisma:generate": "prisma generate --generator client --schema ../../packages/database/prisma/schema.prisma"
 ```
 
 Keep the API package on the same TypeScript peer line as the rest of the workspace so pnpm resolves one physical `@prisma/client` package:

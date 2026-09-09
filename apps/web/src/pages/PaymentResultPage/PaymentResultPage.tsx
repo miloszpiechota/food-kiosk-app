@@ -166,7 +166,7 @@ function StatusTile({ label, value }: { label: string; value: ReactNode }) {
       <p className="text-xs font-black uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
-      <p className="mt-2 break-words text-lg font-black text-foreground">
+      <p className="mt-2 wrap-break-word text-lg font-black text-foreground">
         {value}
       </p>
     </div>
@@ -235,3 +235,4 @@ function getPaymentResultState(
     tone: "pending",
   };
 }
+

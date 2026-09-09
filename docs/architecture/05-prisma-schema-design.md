@@ -120,6 +120,9 @@ Planned Prisma models:
 ### Admin
 Planned Prisma models:
 - `AdminUser`
+- `AdminRestaurantAccess`
+- `AdminInvite`
+- `AdminLoginChallenge`
 - `AdminSession`
 
 ### Later
@@ -203,7 +206,11 @@ Recommended Prisma enums:
 - `STRIPE`
 
 ### `AdminRole`
+- `SUPER_ADMIN`
 - `ADMIN`
+
+### `AdminLoginChallengeType`
+- `TOTP`
 
 ### `AvailabilityOverrideType`
 - `CLOSURE`
@@ -228,6 +235,9 @@ Use Prisma `@@unique` for:
 - `Order.orderNumber`
 - `Payment.providerSessionId`
 - `AdminUser.email`
+- `AdminRestaurantAccess(adminUserId, restaurantId)`
+- `AdminInvite.tokenHash`
+- `AdminLoginChallenge.tokenHash`
 - `AdminSession.tokenId`
 
 Optional:
@@ -248,7 +258,46 @@ Important candidates:
 - `Product(restaurantId, type, isAvailable)`
 - `Order(createdAt)`
 - `Order(status, paymentStatus)`
+- `Order(restaurantId, createdAt)`
+- `Order(restaurantId, status, paymentStatus)`
+- `AdminRestaurantAccess(adminUserId)`
+- `AdminRestaurantAccess(restaurantId)`
+- `AdminInvite(email, expiresAt, acceptedAt)`
+- `AdminLoginChallenge(adminUserId, expiresAt, consumedAt)`
 - `AdminSession(adminUserId, expiresAt, revokedAt)`
+
+## Admin Auth Modeling In Prisma
+
+Recommended admin models:
+
+```prisma
+model AdminUser {
+  id               String   @id @default(uuid()) @db.Uuid
+  email            String   @unique @db.Text
+  passwordHash     String   @map("password_hash") @db.Text
+  role             AdminRole
+  twoFactorSecret  String?  @map("two_factor_secret") @db.Text
+  twoFactorEnabled Boolean  @default(false) @map("two_factor_enabled")
+  isActive         Boolean  @default(true) @map("is_active")
+  lastLoginAt      DateTime? @map("last_login_at") @db.Timestamptz(6)
+
+  @@map("admin_users")
+}
+```
+
+Additional models should include:
+
+- `AdminRestaurantAccess` for restaurant-scoped authorization
+- `AdminInvite` for super-admin-created invite links
+- `AdminLoginChallenge` for short-lived MFA challenges
+- `AdminSession` for revocable final sessions
+
+Security rules:
+
+- store invite tokens and session tokens as hashes
+- never email raw passwords
+- issue a final admin session only after password and TOTP verification
+- use QR-code TOTP setup with a manual authenticator key fallback where setup is shown
 
 ## Availability Modeling In Prisma
 
@@ -277,6 +326,7 @@ The schema uses integer minute offsets from midnight for recurring local time wi
 The important architectural rule is to keep:
 - recurring rules separate from exceptions
 - menu/category/product availability separate by scope
+- meal orderability must account for required groups that lose all visible/available options after an admin hides a product or group option
 
 ## Snapshot Strategy In Prisma
 
@@ -367,4 +417,4 @@ If basket and order snapshots are omitted or made too small, historical pricing 
 If basket and order lines do not preserve `menuProductId`, menu-specific price history becomes unreliable.
 
 ## Status
-Planned. This document defines how the database model should be translated into Prisma before the actual schema file is written.
+Partially implemented. The Prisma schema and migrations now include the core customer ordering, payment, menu, and admin-auth models. This document remains the design reference for planned refinements and should not be read as proof that every workflow is complete.
