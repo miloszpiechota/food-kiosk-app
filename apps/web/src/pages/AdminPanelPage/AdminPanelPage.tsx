@@ -80,9 +80,7 @@ type ProductType = "ITEM" | "MEAL" | "LARGE_MEAL";
 type TableState = "ready" | "loading" | "error" | "empty";
 
 const canUseTemporaryAdminBypass =
-  import.meta.env.DEV ||
-  (import.meta.env.MODE !== "production" &&
-    import.meta.env.VITE_ENABLE_ADMIN_BYPASS === "true");
+  import.meta.env.DEV && import.meta.env.VITE_ENABLE_ADMIN_BYPASS === "true";
 
 interface AdminPanelPageProps {
   onBackToKiosk: () => void;
