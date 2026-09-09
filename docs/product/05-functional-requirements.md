@@ -57,5 +57,6 @@ Define the user-visible and system-visible capabilities required for the MVP of 
 
 ## Notes
 - These requirements describe planned functionality and do not imply current implementation.
+- Detailed meal and large-meal behavior is specified in [Meal Builder Requirements](./13-meal-builder-requirements.md).
 - Automated upsell recommendations are intentionally excluded from the current MVP functional scope and should be treated as Later.
 - More detailed validation rules, security constraints, and accessibility standards should be defined in later discovery documents.

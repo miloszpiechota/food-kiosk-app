@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="pl">
+  <head>
+    <meta charset="utf-8" />
+    <title>Jak dziala skladanie zamowienia i platnosc Stripe</title>
+    <style>
+      @page {
+        margin: 18mm 16mm;
+      }
+
+      body {
+        color: #17202a;
+        font-family: Arial, Helvetica, sans-serif;
+        font-size: 10.5pt;
+        line-height: 1.42;
+        margin: 0;
+      }
+
+      h1 {
+        border-bottom: 2px solid #1f6feb;
+        color: #0b1f33;
+        font-size: 20pt;
+        margin: 0 0 10px;
+        padding-bottom: 8px;
+      }
+
+      h2 {
+        color: #0b1f33;
+        font-size: 14pt;
+        margin: 18px 0 8px;
+      }
+
+      h3 {
+        color: #0b1f33;
+        font-size: 11.5pt;
+        margin: 13px 0 5px;
+      }
+
+      p {
+        margin: 6px 0;
+      }
+
+      ol,
+      ul {
+        margin: 6px 0 6px 22px;
+        padding: 0;
+      }
+
+      li {
+        margin: 4px 0;
+      }
+
+      code {
+        background: #f2f5f8;
+        border-radius: 3px;
+        color: #0b1f33;
+        font-family: Consolas, "Courier New", monospace;
+        font-size: 9.5pt;
+        padding: 1px 3px;
+      }
+
+      .lead {
+        color: #334155;
+        font-size: 11pt;
+        margin-bottom: 12px;
+      }
+
+      .box {
+        background: #f8fafc;
+        border: 1px solid #d7dee8;
+        border-radius: 6px;
+        margin: 10px 0;
+        padding: 10px 12px;
+      }
+
+      .warn {
+        background: #fff8e6;
+        border-color: #e7c872;
+      }
+
+      .flow {
+        background: #eef6ff;
+        border-color: #9cc7f1;
+      }
+
+      .small {
+        color: #475569;
+        font-size: 9.5pt;
+      }
+
+      .page-break {
+        break-before: page;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Jak dziala skladanie zamowienia i platnosc Stripe</h1>
+    <p class="lead">
+      Ten opis dotyczy aktualnego kodu aplikacji Food Ordering Kiosk App. Przeplyw zaczyna sie w React,
+      przechodzi przez NestJS, warstwe Prisma i konczy na rekordach w PostgreSQL.
+    </p>
+
+    <div class="box flow">
+      <strong>Najkrotszy obraz procesu:</strong>
+      koszyk w bazie danych -> snapshot zamowienia -> Stripe Checkout Session -> redirect do Stripe ->
+      powrot do kiosku -> frontend odswieza status -> backend potwierdza platnosc dopiero po zweryfikowanym webhooku Stripe.
+    </div>
+
+    <h2>1. Frontend: wybor produktow i koszyk</h2>
+    <ol>
+      <li>
+        Aplikacja startuje w <code>apps/web/src/app/router.tsx</code>. Router trzyma stan ekranu:
+        <code>welcome</code>, <code>menu</code>, <code>product-details</code>, <code>basket-review</code>,
+        <code>payment-result</code>.
+      </li>
+      <li>
+        Uzytkownik wybiera tryb <code>dine-in</code> albo <code>take-out</code>. W aktualnym kodzie to jest tylko
+        stan frontendu (<code>orderMode</code>), uzywany w UI. Nie jest wysylany do API podczas tworzenia zamowienia.
+      </li>
+      <li>
+        Gdy uzytkownik pierwszy raz dodaje produkt, frontend wywoluje <code>ensureBasket()</code>. Jesli nie ma
+        aktywnego <code>basketId</code>, wysyla <code>POST /api/v1/kiosk/baskets</code> przez funkcje
+        <code>createBasket()</code> z <code>basketApi.ts</code>.
+      </li>
+      <li>
+        Backend zwraca koszyk z <code>id</code>, <code>sessionId</code>, lista pozycji i suma. Frontend zapamietuje
+        <code>basket.id</code> w <code>basketIdRef</code>, a pozycje i podsumowanie w stanie React.
+      </li>
+      <li>
+        Dodanie produktu idzie przez <code>addBasketItem()</code>, czyli
+        <code>POST /api/v1/kiosk/baskets/:basketId/items</code>. Ilosc zmieniana jest przez
+        <code>PATCH /api/v1/kiosk/baskets/:basketId/items/:basketItemId</code>, a usuniecie przez
+        <code>DELETE /api/v1/kiosk/baskets/:basketId/items/:basketItemId</code>.
+      </li>
+    </ol>
+
+    <h2>2. Backend: tworzenie i aktualizacja koszyka</h2>
+    <ol>
+      <li>
+        Endpointy koszyka sa w <code>apps/api/src/kiosk-basket/kiosk-basket.controller.ts</code>, a logika w
+        <code>KioskBasketService</code>.
+      </li>
+      <li>
+        <code>createBasket()</code> tworzy rekord <code>Basket</code> ze statusem <code>ACTIVE</code>. Jesli request nie
+        ma <code>sessionId</code>, backend generuje go przez <code>randomUUID()</code>.
+      </li>
+      <li>
+        <code>addItem()</code> sprawdza, czy koszyk nadal jest aktywny, oraz laduje produkt menu dostepny dla aktywnej
+        restauracji i menu. Potem <code>MealConfigurationService</code> wylicza konfiguracje produktu: cene jednostkowa,
+        fingerprint i snapshot konfiguracji.
+      </li>
+      <li>
+        Zapis pozycji koszyka odbywa sie w transakcji Prisma. Jesli w koszyku istnieje juz taka sama pozycja
+        (<code>basketId + menuProductId + configurationFingerprint</code>), backend zwieksza ilosc. Jesli nie, tworzy
+        nowy rekord <code>BasketItem</code>.
+      </li>
+      <li>
+        Po kazdej zmianie backend sumuje <code>lineTotal</code> wszystkich pozycji i zapisuje wynik w
+        <code>Basket.subtotalAmount</code>. Dzieki temu frontend nie decyduje o cenie koncowej.
+      </li>
+    </ol>
+
+    <h2>3. Prisma i DB: tabele koszyka</h2>
+    <ul>
+      <li><code>Basket</code> mapuje sie na tabele <code>baskets</code>.</li>
+      <li><code>BasketItem</code> mapuje sie na <code>basket_items</code>.</li>
+      <li><code>Basket.status</code> moze byc m.in. <code>ACTIVE</code> albo <code>CHECKED_OUT</code>.</li>
+      <li>
+        <code>BasketItem</code> przechowuje snapshot nazwy produktu, cene jednostkowa, ilosc, line total i JSON z
+        konfiguracja. To jest wazne, bo pozniejsza zmiana produktu w menu nie powinna zmienic juz zlozonego koszyka.
+      </li>
+    </ul>
+
+    <h2 class="page-break">4. Frontend: klikniecie "Continue to payment"</h2>
+    <ol>
+      <li>
+        Na ekranie <code>BasketReviewPage</code> glowna funkcja to <code>handleContinueToPayment()</code>.
+      </li>
+      <li>
+        Funkcja najpierw tworzy snapshot zamowienia:
+        <code>const order = createdOrder ?? await onCreateOrderSnapshot()</code>.
+      </li>
+      <li>
+        <code>onCreateOrderSnapshot()</code> w routerze wywoluje <code>createOrderSnapshot(basketId)</code>, czyli
+        <code>POST /api/v1/kiosk/orders</code> z body <code>{ basketId }</code>.
+      </li>
+      <li>
+        Po udanym utworzeniu zamowienia router czysci lokalny <code>basketIdRef</code>. Koszyk nie powinien juz byc
+        dalej edytowany jako aktywny koszyk.
+      </li>
+      <li>
+        Dopiero po utworzeniu zamowienia frontend wywoluje <code>createCheckoutSession(order.id)</code>, czyli
+        <code>POST /api/v1/kiosk/orders/:orderId/checkout-session</code>.
+      </li>
+      <li>
+        Jesli backend zwroci <code>checkoutUrl</code>, frontend robi
+        <code>window.location.assign(checkoutSession.checkoutUrl)</code>. To jest moment, w ktorym uzytkownik opuszcza
+        aplikacje i przechodzi do Stripe Checkout.
+      </li>
+    </ol>
+
+    <h2>5. Backend: tworzenie snapshotu zamowienia</h2>
+    <ol>
+      <li>
+        Endpoint <code>POST /api/v1/kiosk/orders</code> jest w
+        <code>apps/api/src/kiosk-order/kiosk-order.controller.ts</code>.
+      </li>
+      <li>
+        <code>KioskOrderService.createOrder()</code> wymaga <code>basketId</code>, a potem w transakcji szuka koszyka
+        <code>BasketStatus.ACTIVE</code> razem z pozycjami, produktami i menu.
+      </li>
+      <li>
+        Jesli koszyk nie istnieje albo nie jest aktywny, backend zwraca blad <code>BASKET_NOT_ACTIVE</code>. Jesli jest
+        pusty, zwraca <code>BASKET_EMPTY</code>.
+      </li>
+      <li>
+        Backend wylicza <code>restaurantId</code> na podstawie pozycji koszyka. Jesli pozycje pochodza z roznych
+        restauracji, zamowienie jest odrzucane.
+      </li>
+      <li>
+        Backend liczy <code>subtotalAmount</code> jako sume <code>BasketItem.lineTotal</code>.
+      </li>
+      <li>
+        Tworzony jest rekord <code>Order</code> ze statusem <code>OrderStatus.NEW</code> i
+        <code>paymentStatus = PENDING</code>.
+      </li>
+      <li>
+        Razem z zamowieniem tworzone sa <code>OrderItem</code>. Kazda pozycja dostaje snapshot nazwy produktu, typu,
+        ceny, ilosci, line total i konfiguracji.
+      </li>
+      <li>
+        Na koncu tej samej transakcji koszyk jest aktualizowany do <code>BasketStatus.CHECKED_OUT</code>. Od tego
+        momentu nie jest juz aktywnym koszykiem.
+      </li>
+    </ol>
+
+    <h2>6. Prisma i DB: tabele zamowienia</h2>
+    <ul>
+      <li><code>Order</code> mapuje sie na <code>orders</code>.</li>
+      <li><code>OrderItem</code> mapuje sie na <code>order_items</code>.</li>
+      <li>
+        <code>Order.orderNumber</code> ma format podobny do <code>K-YYYYMMDD-XXXXXX</code>, generowany z daty i
+        fragmentu UUID.
+      </li>
+      <li>
+        <code>Order.paymentStatus</code> zaczyna jako <code>PENDING</code>, potem przechodzi na
+        <code>AWAITING_PAYMENT_CONFIRMATION</code>, a po webhooku moze zostac <code>PAID</code>,
+        <code>FAILED</code> albo <code>CANCELLED</code>.
+      </li>
+    </ul>
+
+    <h2 class="page-break">7. Backend: moment rozpoczecia Stripe</h2>
+    <ol>
+      <li>
+        Stripe startuje dopiero przy <code>POST /api/v1/kiosk/orders/:orderId/checkout-session</code>. To nie jest
+        moment tworzenia koszyka ani nawet samo klikniecie w UI; faktycznie Stripe jest wywolywany po istnieniu rekordu
+        <code>Order</code>.
+      </li>
+      <li>
+        <code>PaymentsService.createCheckoutSession()</code> laduje zamowienie razem z pozycjami, platnoscia i
+        restauracja.
+      </li>
+      <li>
+        Backend waliduje, ze zamowienie ma pozycje, nie jest juz oplacone i ma poprawna kwote w groszach/centach
+        (<code>toMinorUnits()</code>).
+      </li>
+      <li>
+        Tworzona jest sesja Stripe:
+        <code>stripe.checkout.sessions.create({ mode: 'payment', ... })</code>.
+      </li>
+      <li>
+        Do Stripe trafia <code>client_reference_id = order.id</code> oraz metadata:
+        <code>orderId</code> i <code>orderNumber</code>. Te dane pomagaja powiazac sesje Stripe z zamowieniem.
+      </li>
+      <li>
+        <code>success_url</code> i <code>cancel_url</code> prowadza z powrotem na frontend. URL zawiera
+        <code>checkout=success/cancelled</code> i <code>orderId</code>. Dla sukcesu dodawany jest tez
+        <code>session_id={CHECKOUT_SESSION_ID}</code>.
+      </li>
+      <li>
+        Kwota Stripe jest jedna pozycja line item: <code>Kiosk order {orderNumber}</code> z kwota
+        <code>order.totalAmount * 100</code>.
+      </li>
+      <li>
+        Po otrzymaniu <code>checkoutSession.url</code> backend zapisuje lub aktualizuje rekord <code>Payment</code>
+        przez <code>payment.upsert()</code>.
+      </li>
+      <li>
+        W tej samej transakcji backend ustawia <code>Payment.status</code> i
+        <code>Order.paymentStatus</code> na <code>AWAITING_PAYMENT_CONFIRMATION</code>.
+      </li>
+      <li>
+        Backend zwraca frontendowi <code>checkoutUrl</code>. Frontend przekierowuje uzytkownika do Stripe.
+      </li>
+    </ol>
+
+    <h2>8. Prisma i DB: tabela platnosci</h2>
+    <ul>
+      <li><code>Payment</code> mapuje sie na <code>payments</code>.</li>
+      <li><code>Payment.orderId</code> jest unikalne, czyli jedno zamowienie ma maksymalnie jeden rekord platnosci.</li>
+      <li><code>provider</code> ma wartosc <code>STRIPE</code>.</li>
+      <li><code>providerSessionId</code> przechowuje ID sesji Stripe Checkout i tez jest unikalne.</li>
+      <li><code>providerPaymentIntentId</code> przechowuje ID PaymentIntent, jesli Stripe je zwrocil.</li>
+      <li><code>amount</code> i <code>currency</code> sa zapisane po stronie backendu na podstawie zamowienia.</li>
+    </ul>
+
+    <h2>9. Powrot ze Stripe do frontendu</h2>
+    <ol>
+      <li>
+        Po Stripe Checkout uzytkownik wraca na frontend z parametrami URL, np.
+        <code>?checkout=success&amp;orderId=...</code> albo <code>?checkout=cancelled&amp;orderId=...</code>.
+      </li>
+      <li>
+        <code>readPaymentReturnState()</code> w <code>router.tsx</code> odczytuje <code>orderId</code> i
+        <code>checkout</code>. Jesli jest <code>orderId</code>, router pokazuje ekran <code>payment-result</code>.
+      </li>
+      <li>
+        <code>PaymentResultPage</code> od razu odpytuje backend przez <code>GET /api/v1/kiosk/orders/:orderId</code>.
+      </li>
+      <li>
+        Ekran odswieza status co 2,5 sekundy, dopoki platnosc nie ma statusu terminalnego:
+        <code>PAID</code>, <code>FAILED</code> albo <code>CANCELLED</code>.
+      </li>
+      <li>
+        Jezeli Stripe przekierowal z sukcesem, ale webhook jeszcze nie dotarl, UI pokazuje stan
+        "Confirming payment". To jest celowe: frontend sam nie potwierdza platnosci.
+      </li>
+    </ol>
+
+    <h2 class="page-break">10. Backend: webhook Stripe, czyli prawdziwe potwierdzenie platnosci</h2>
+    <ol>
+      <li>
+        Webhook odbiera <code>POST /api/v1/webhooks/stripe</code> w
+        <code>apps/api/src/payments/payments.controller.ts</code>.
+      </li>
+      <li>
+        Aplikacja NestJS jest uruchomiona z <code>rawBody: true</code> w <code>main.ts</code>. To jest potrzebne,
+        bo Stripe wymaga oryginalnego body requestu do weryfikacji podpisu.
+      </li>
+      <li>
+        Controller wymaga naglowka <code>stripe-signature</code> oraz <code>request.rawBody</code>. Bez tego webhook
+        jest odrzucany.
+      </li>
+      <li>
+        <code>PaymentsService.handleStripeWebhook()</code> wywoluje
+        <code>stripe.webhooks.constructEvent(payload, signature, webhookSecret)</code>. Jezeli podpis jest niepoprawny,
+        backend zwraca blad <code>STRIPE_SIGNATURE_INVALID</code>.
+      </li>
+      <li>
+        <code>resolvePaymentStatus()</code> mapuje zdarzenia Stripe:
+        <code>checkout.session.completed</code> z <code>payment_status='paid'</code> -> <code>PAID</code>,
+        <code>checkout.session.async_payment_succeeded</code> -> <code>PAID</code>,
+        <code>checkout.session.async_payment_failed</code> -> <code>FAILED</code>,
+        <code>checkout.session.expired</code> -> <code>CANCELLED</code>.
+      </li>
+      <li>
+        <code>applyCheckoutSessionStatus()</code> szuka rekordu <code>Payment</code> po
+        <code>providerSessionId = session.id</code>. Jesli go nie ma, nic nie aktualizuje.
+      </li>
+      <li>
+        Jesli platnosc byla juz <code>PAID</code>, backend nie pozwala nadpisac jej pozniejszym statusem innym niz
+        <code>PAID</code>.
+      </li>
+      <li>
+        W transakcji aktualizowane sa dwa miejsca: <code>Payment.status</code> oraz
+        <code>Order.paymentStatus</code>. To jest moment, w ktorym zamowienie staje sie realnie oplacone.
+      </li>
+    </ol>
+
+    <h2>11. Konfiguracja Stripe i bezpieczenstwo w tym kodzie</h2>
+    <ul>
+      <li>
+        <code>StripeConfigService.getSecretKey()</code> wymaga <code>STRIPE_SECRET_KEY</code> zaczynajacego sie od
+        <code>sk_test_</code>. Kod wymusza Stripe test mode.
+      </li>
+      <li>
+        <code>getWebhookSecret()</code> wymaga <code>STRIPE_WEBHOOK_SECRET</code> zaczynajacego sie od
+        <code>whsec_</code>.
+      </li>
+      <li>
+        <code>FRONTEND_URL</code> okresla, dokad Stripe ma przekierowac uzytkownika po sukcesie albo anulowaniu.
+      </li>
+      <li>
+        CORS w <code>main.ts</code> dopuszcza frontend z <code>FRONTEND_URL</code> albo domyslnie
+        <code>http://localhost:5173</code>.
+      </li>
+    </ul>
+
+    <h2>12. Statusy: jak je czytac</h2>
+    <ul>
+      <li><code>Basket.ACTIVE</code>: koszyk mozna jeszcze edytowac.</li>
+      <li><code>Basket.CHECKED_OUT</code>: z koszyka utworzono zamowienie; koszyk nie jest juz aktywny.</li>
+      <li><code>Order.NEW</code>: zamowienie zostalo utworzone, ale w tym kodzie nie ma jeszcze workflow kuchni.</li>
+      <li><code>PaymentStatus.PENDING</code>: zamowienie istnieje, ale sesja Stripe jeszcze nie zostala utworzona.</li>
+      <li>
+        <code>PaymentStatus.AWAITING_PAYMENT_CONFIRMATION</code>: sesja Stripe istnieje, uzytkownik jest lub byl w
+        Checkout, backend czeka na webhook.
+      </li>
+      <li><code>PaymentStatus.PAID</code>: zweryfikowany webhook potwierdzil platnosc.</li>
+      <li><code>PaymentStatus.FAILED</code>: Stripe zglosil nieudana platnosc async.</li>
+      <li><code>PaymentStatus.CANCELLED</code>: sesja Stripe wygasla albo zostala uznana za anulowana.</li>
+    </ul>
+
+    <h2>13. Wazne ograniczenia aktualnej implementacji</h2>
+    <div class="box warn">
+      <ul>
+        <li>
+          Tryb <code>dine-in</code>/<code>take-out</code> nie jest obecnie zapisywany w DB przy zamowieniu. Jest tylko w
+          stanie React i UI.
+        </li>
+        <li>
+          Redirect <code>checkout=success</code> nie ustawia platnosci jako oplaconej. To robi dopiero webhook Stripe.
+        </li>
+        <li>
+          W zamowieniu nie widac jeszcze rozbudowanego procesu realizacji kuchennej; <code>Order.status</code> startuje
+          jako <code>NEW</code>.
+        </li>
+        <li>
+          Kwota dla Stripe jest wysylana jako jedna pozycja "Kiosk order ...", a nie jako osobne produkty z koszyka.
+        </li>
+      </ul>
+    </div>
+
+    <h2>14. Najwazniejsze pliki do czytania w kolejnosci</h2>
+    <ol>
+      <li><code>apps/web/src/app/router.tsx</code> - stan aplikacji, basketId, powrot ze Stripe.</li>
+      <li><code>apps/web/src/pages/BasketReviewPage/BasketReviewPage.tsx</code> - klikniecie "Continue to payment".</li>
+      <li><code>apps/web/src/features/cart/api/basketApi.ts</code> - requesty HTTP z frontendu.</li>
+      <li><code>apps/api/src/kiosk-basket/kiosk-basket.service.ts</code> - tworzenie i przeliczanie koszyka.</li>
+      <li><code>apps/api/src/kiosk-order/kiosk-order.service.ts</code> - snapshot zamowienia i checkout koszyka.</li>
+      <li><code>apps/api/src/payments/payments.service.ts</code> - Stripe Checkout i webhook.</li>
+      <li><code>packages/database/prisma/schema.prisma</code> - modele <code>Basket</code>, <code>Order</code> i <code>Payment</code>.</li>
+    </ol>
+
+    <p class="small">
+      Dokument wygenerowany na podstawie aktualnego kodu repozytorium, bez zakladania funkcji, ktore nie sa
+      zaimplementowane.
+    </p>
+  </body>
+</html>

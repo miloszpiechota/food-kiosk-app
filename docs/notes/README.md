@@ -38,17 +38,18 @@ pnpm.cmd test
 
 ### Local Database
 
-Start PostgreSQL with:
+Local development currently uses PostgreSQL installed on the machine instead of
+Docker.
 
-```powershell
-pnpm db:up
-```
+Use pgAdmin to create and inspect the local database:
 
-Check status with:
+- Database: `food_kiosk_dev`
+- Default user: `postgres`
+- Default password: `postgres`
+- Default port: `5432`
 
-```powershell
-pnpm db:ps
-```
+If your local PostgreSQL settings differ, update `DATABASE_URL` in the root
+`.env` and `packages/database/.env`.
 
 ### CI Quality Gates
 

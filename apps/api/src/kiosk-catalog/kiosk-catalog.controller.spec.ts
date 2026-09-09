@@ -97,15 +97,19 @@ describe('KioskCatalogController', () => {
       sku: 'burger',
       name: 'Burger',
       description: null,
+      label: 'Popular' as const,
       price: '12.00',
       currencyCode: 'PLN',
       imageUrl: null,
       sortOrder: 1,
+      hasCustomizations: true,
       locale: 'en',
       isAvailable: true,
       groups: [],
       ingredients: [],
       modifierGroups: [],
+      regularMeal: null,
+      largeMeal: null,
     };
     service.getMenuProductDetail.mockResolvedValue(response);
 

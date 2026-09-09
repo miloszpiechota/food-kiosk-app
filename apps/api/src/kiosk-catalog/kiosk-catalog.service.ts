@@ -1,11 +1,19 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   ActiveMenuResponse,
+  MealSizeVariantResponse,
   MenuCategoryListResponse,
   MenuCategoryProductsResponse,
   MenuProductDetailResponse,
   MenuProductSummary,
+  ModifierGroupResponse,
+  ProductIngredientResponse,
+  ProductLabelResponse,
 } from './kiosk-catalog.types';
 
 interface TranslationFields {
@@ -26,6 +34,71 @@ interface NamedRecord {
 
 interface DecimalLike {
   toString(): string;
+}
+
+interface MealVariantRecord extends NamedRecord {
+  id: string;
+  type: string;
+  basePrice: DecimalLike;
+  imageUrl: string | null;
+  translations: readonly TranslationFields[];
+  menuProducts: Array<{
+    id: string;
+    menuPrice: DecimalLike | null;
+    menuCategory: {
+      menuId: string;
+    };
+  }>;
+}
+
+interface ProductIngredientRecord {
+  id: string;
+  ingredientId: string;
+  defaultQuantity: number;
+  isDefaultIncluded: boolean;
+  isRemovable: boolean;
+  removePriceAdjustment: DecimalLike;
+  allowExtra: boolean;
+  extraUnitPrice: DecimalLike;
+  maxExtraQuantity: number;
+  sortOrder: number;
+  ingredient: {
+    code: string;
+    name: string;
+    translations: readonly NameTranslationFields[];
+  };
+}
+
+interface ModifierOptionRecord {
+  id: string;
+  ingredientId: string | null;
+  productIngredientId: string | null;
+  priceAdjustment: DecimalLike;
+  maxQuantity: number;
+  sortOrder: number;
+  ingredient: {
+    name: string;
+    translations: readonly NameTranslationFields[];
+  } | null;
+  productIngredient: {
+    ingredient: {
+      name: string;
+      translations: readonly NameTranslationFields[];
+    };
+  } | null;
+}
+
+interface ModifierGroupRecord {
+  id: string;
+  name: string;
+  actionType: string;
+  selectionType: string;
+  minSelections: number;
+  maxSelections: number;
+  allowQuantity: boolean;
+  isRequired: boolean;
+  sortOrder: number;
+  options: ModifierOptionRecord[];
 }
 
 @Injectable()
@@ -175,6 +248,12 @@ export class KioskCatalogService {
             product: {
               include: {
                 translations: true,
+                _count: {
+                  select: {
+                    productGroups: true,
+                    modifierGroups: true,
+                  },
+                },
               },
             },
           },
@@ -211,7 +290,21 @@ export class KioskCatalogService {
     const menuProduct = await this.prisma.menuProduct.findFirst({
       where: {
         id: menuProductId,
-        isVisible: true,
+        OR: [
+          { isVisible: true },
+          {
+            product: {
+              type: 'LARGE_MEAL',
+              regularMeal: {
+                menuProducts: {
+                  some: {
+                    isVisible: true,
+                  },
+                },
+              },
+            },
+          },
+        ],
         menuCategory: {
           isVisible: true,
           category: {
@@ -241,6 +334,26 @@ export class KioskCatalogService {
         product: {
           include: {
             translations: true,
+            regularMeal: {
+              include: {
+                translations: true,
+                menuProducts: {
+                  include: {
+                    menuCategory: true,
+                  },
+                },
+              },
+            },
+            largeMealVariant: {
+              include: {
+                translations: true,
+                menuProducts: {
+                  include: {
+                    menuCategory: true,
+                  },
+                },
+              },
+            },
             productGroups: {
               orderBy: [{ sortOrder: 'asc' }],
               include: {
@@ -261,6 +374,49 @@ export class KioskCatalogService {
                     product: {
                       include: {
                         translations: true,
+                        productIngredients: {
+                          where: {
+                            isAvailable: true,
+                            ingredient: {
+                              isActive: true,
+                            },
+                          },
+                          orderBy: [{ sortOrder: 'asc' }],
+                          include: {
+                            ingredient: {
+                              include: {
+                                translations: true,
+                              },
+                            },
+                          },
+                        },
+                        modifierGroups: {
+                          orderBy: [{ sortOrder: 'asc' }],
+                          include: {
+                            options: {
+                              where: {
+                                isAvailable: true,
+                              },
+                              orderBy: [{ sortOrder: 'asc' }],
+                              include: {
+                                ingredient: {
+                                  include: {
+                                    translations: true,
+                                  },
+                                },
+                                productIngredient: {
+                                  include: {
+                                    ingredient: {
+                                      include: {
+                                        translations: true,
+                                      },
+                                    },
+                                  },
+                                },
+                              },
+                            },
+                          },
+                        },
                       },
                     },
                   },
@@ -327,6 +483,7 @@ export class KioskCatalogService {
       resolvedLocale,
       restaurant.defaultLocale,
     );
+    this.validateMealDefinition(menuProduct.product);
 
     return {
       ...summary,
@@ -337,6 +494,7 @@ export class KioskCatalogService {
       isAvailable: menuProduct.product.isAvailable,
       groups: menuProduct.product.productGroups.map((group) => ({
         id: group.id,
+        code: group.productGroupTemplate.code,
         name:
           group.nameOverride ??
           this.resolveName(
@@ -361,71 +519,180 @@ export class KioskCatalogService {
           return {
             id: option.id,
             productId: option.productId,
+            type: option.product.type,
             name: optionText.name,
+            imageUrl: option.product.imageUrl,
             priceAdjustment: this.formatDecimal(option.priceAdjustment),
-            isDefault: option.isDefault,
+            isInitialSelection: group.options[0]?.id === option.id,
             sortOrder: option.sortOrder,
+            ingredients: this.toProductIngredients(
+              option.product.productIngredients,
+              resolvedLocale,
+              restaurant.defaultLocale,
+            ),
+            modifierGroups: this.toModifierGroups(
+              option.product.modifierGroups,
+              resolvedLocale,
+              restaurant.defaultLocale,
+            ),
           };
         }),
       })),
-      ingredients: menuProduct.product.productIngredients.map(
-        (productIngredient) => ({
-          id: productIngredient.id,
-          ingredientId: productIngredient.ingredientId,
-          code: productIngredient.ingredient.code,
-          name: this.resolveName(
-            productIngredient.ingredient.name,
-            productIngredient.ingredient.translations,
-            resolvedLocale,
-            restaurant.defaultLocale,
-          ),
-          defaultQuantity: productIngredient.defaultQuantity,
-          isDefaultIncluded: productIngredient.isDefaultIncluded,
-          isRemovable: productIngredient.isRemovable,
-          removePriceAdjustment: this.formatDecimal(
-            productIngredient.removePriceAdjustment,
-          ),
-          allowExtra: productIngredient.allowExtra,
-          extraUnitPrice: this.formatDecimal(productIngredient.extraUnitPrice),
-          maxExtraQuantity: productIngredient.maxExtraQuantity,
-          sortOrder: productIngredient.sortOrder,
-        }),
+      ingredients: this.toProductIngredients(
+        menuProduct.product.productIngredients,
+        resolvedLocale,
+        restaurant.defaultLocale,
       ),
-      modifierGroups: menuProduct.product.modifierGroups.map(
-        (modifierGroup) => ({
-          id: modifierGroup.id,
-          name: modifierGroup.name,
-          actionType: modifierGroup.actionType,
-          selectionType: modifierGroup.selectionType,
-          minSelections: modifierGroup.minSelections,
-          maxSelections: modifierGroup.maxSelections,
-          allowQuantity: modifierGroup.allowQuantity,
-          isRequired: modifierGroup.isRequired,
-          sortOrder: modifierGroup.sortOrder,
-          options: modifierGroup.options.map((option) => {
-            const ingredient =
-              option.ingredient ?? option.productIngredient?.ingredient ?? null;
-
-            return {
-              id: option.id,
-              ingredientId: option.ingredientId,
-              productIngredientId: option.productIngredientId,
-              name: ingredient
-                ? this.resolveName(
-                    ingredient.name,
-                    ingredient.translations,
-                    resolvedLocale,
-                    restaurant.defaultLocale,
-                  )
-                : null,
-              priceAdjustment: this.formatDecimal(option.priceAdjustment),
-              maxQuantity: option.maxQuantity,
-              sortOrder: option.sortOrder,
-            };
-          }),
-        }),
+      modifierGroups: this.toModifierGroups(
+        menuProduct.product.modifierGroups,
+        resolvedLocale,
+        restaurant.defaultLocale,
+      ),
+      regularMeal: this.toMealSizeVariant(
+        menuProduct.product.regularMeal,
+        menuProduct.menuCategory.menuId,
+        resolvedLocale,
+        restaurant.defaultLocale,
+      ),
+      largeMeal: this.toMealSizeVariant(
+        menuProduct.product.largeMealVariant,
+        menuProduct.menuCategory.menuId,
+        resolvedLocale,
+        restaurant.defaultLocale,
       ),
     };
+  }
+
+  private validateMealDefinition(product: {
+    type: string;
+    productGroups: Array<{
+      minSelections: number;
+      maxSelections: number;
+      selectionMode: string;
+      isRequired: boolean;
+      options: unknown[];
+    }>;
+  }): void {
+    if (product.type === 'ITEM') {
+      return;
+    }
+
+    const validGroupCount =
+      product.productGroups.length >= 2 && product.productGroups.length <= 4;
+    const validGroups = product.productGroups.every(
+      (group) =>
+        group.minSelections === 1 &&
+        group.maxSelections === 1 &&
+        group.selectionMode === 'SINGLE' &&
+        group.isRequired &&
+        group.options.length > 0,
+    );
+
+    if (!validGroupCount || !validGroups) {
+      throw new UnprocessableEntityException({
+        code: 'INVALID_MEAL_DEFINITION',
+        message: 'This meal is not configured correctly.',
+      });
+    }
+  }
+
+  private toMealSizeVariant(
+    product: MealVariantRecord | null,
+    menuId: string,
+    locale: string,
+    defaultLocale: string,
+  ): MealSizeVariantResponse | null {
+    if (!product) {
+      return null;
+    }
+
+    const menuProduct = product.menuProducts.find(
+      (candidate) => candidate.menuCategory.menuId === menuId,
+    );
+    if (!menuProduct) {
+      return null;
+    }
+
+    return {
+      menuProductId: menuProduct.id,
+      productId: product.id,
+      type: product.type,
+      name: this.resolveNameDescription(
+        product,
+        product.translations,
+        locale,
+        defaultLocale,
+      ).name,
+      price: this.formatDecimal(menuProduct.menuPrice ?? product.basePrice),
+      imageUrl: product.imageUrl,
+    };
+  }
+
+  private toProductIngredients(
+    productIngredients: ProductIngredientRecord[],
+    locale: string,
+    defaultLocale: string,
+  ): ProductIngredientResponse[] {
+    return productIngredients.map((productIngredient) => ({
+      id: productIngredient.id,
+      ingredientId: productIngredient.ingredientId,
+      code: productIngredient.ingredient.code,
+      name: this.resolveName(
+        productIngredient.ingredient.name,
+        productIngredient.ingredient.translations,
+        locale,
+        defaultLocale,
+      ),
+      defaultQuantity: productIngredient.defaultQuantity,
+      isDefaultIncluded: productIngredient.isDefaultIncluded,
+      isRemovable: productIngredient.isRemovable,
+      removePriceAdjustment: this.formatDecimal(
+        productIngredient.removePriceAdjustment,
+      ),
+      allowExtra: productIngredient.allowExtra,
+      extraUnitPrice: this.formatDecimal(productIngredient.extraUnitPrice),
+      maxExtraQuantity: productIngredient.maxExtraQuantity,
+      sortOrder: productIngredient.sortOrder,
+    }));
+  }
+
+  private toModifierGroups(
+    modifierGroups: ModifierGroupRecord[],
+    locale: string,
+    defaultLocale: string,
+  ): ModifierGroupResponse[] {
+    return modifierGroups.map((modifierGroup) => ({
+      id: modifierGroup.id,
+      name: modifierGroup.name,
+      actionType: modifierGroup.actionType,
+      selectionType: modifierGroup.selectionType,
+      minSelections: modifierGroup.minSelections,
+      maxSelections: modifierGroup.maxSelections,
+      allowQuantity: modifierGroup.allowQuantity,
+      isRequired: modifierGroup.isRequired,
+      sortOrder: modifierGroup.sortOrder,
+      options: modifierGroup.options.map((option) => {
+        const ingredient =
+          option.ingredient ?? option.productIngredient?.ingredient ?? null;
+
+        return {
+          id: option.id,
+          ingredientId: option.ingredientId,
+          productIngredientId: option.productIngredientId,
+          name: ingredient
+            ? this.resolveName(
+                ingredient.name,
+                ingredient.translations,
+                locale,
+                defaultLocale,
+              )
+            : null,
+          priceAdjustment: this.formatDecimal(option.priceAdjustment),
+          maxQuantity: option.maxQuantity,
+          sortOrder: option.sortOrder,
+        };
+      }),
+    }));
   }
 
   private toMenuProductSummary(
@@ -440,9 +707,16 @@ export class KioskCatalogService {
         sku: string;
         name: string;
         description: string | null;
+        label: string | null;
         basePrice: DecimalLike;
         imageUrl: string | null;
         translations: readonly TranslationFields[];
+        _count?: {
+          productGroups: number;
+          modifierGroups: number;
+        };
+        productGroups?: unknown[];
+        modifierGroups?: unknown[];
       };
     },
     currencyCode: string,
@@ -463,13 +737,36 @@ export class KioskCatalogService {
       sku: menuProduct.product.sku,
       name: text.name,
       description: text.description,
+      label: this.formatProductLabel(menuProduct.product.label),
       price: this.formatDecimal(
         menuProduct.menuPrice ?? menuProduct.product.basePrice,
       ),
       currencyCode,
       imageUrl: menuProduct.product.imageUrl,
       sortOrder: menuProduct.sortOrder,
+      hasCustomizations: this.hasCustomizations(menuProduct.product),
     };
+  }
+
+  private hasCustomizations(product: {
+    type: string;
+    _count?: {
+      productGroups: number;
+      modifierGroups: number;
+    };
+    productGroups?: unknown[];
+    modifierGroups?: unknown[];
+  }): boolean {
+    if (product.type !== 'ITEM') {
+      return true;
+    }
+
+    const productGroupCount =
+      product._count?.productGroups ?? product.productGroups?.length ?? 0;
+    const modifierGroupCount =
+      product._count?.modifierGroups ?? product.modifierGroups?.length ?? 0;
+
+    return productGroupCount > 0 || modifierGroupCount > 0;
   }
 
   private resolveLocale(
@@ -522,5 +819,20 @@ export class KioskCatalogService {
 
   private formatDecimal(value: DecimalLike): string {
     return value.toString();
+  }
+
+  private formatProductLabel(
+    label: string | null,
+  ): ProductLabelResponse | null {
+    switch (label) {
+      case 'POPULAR':
+        return 'Popular';
+      case 'NEW':
+        return 'New';
+      case 'VEGETARIAN':
+        return 'Vegetarian';
+      default:
+        return null;
+    }
   }
 }

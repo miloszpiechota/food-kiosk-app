@@ -30,11 +30,15 @@ export interface MenuProductSummary {
   sku: string;
   name: string;
   description: string | null;
+  label: ProductLabelResponse | null;
   price: string;
   currencyCode: string;
   imageUrl: string | null;
   sortOrder: number;
+  hasCustomizations: boolean;
 }
+
+export type ProductLabelResponse = 'Popular' | 'New' | 'Vegetarian';
 
 export interface MenuCategoryProductsResponse {
   menuCategoryId: string;
@@ -46,14 +50,19 @@ export interface MenuCategoryProductsResponse {
 export interface ProductGroupOptionResponse {
   id: string;
   productId: string;
+  type: string;
   name: string;
+  imageUrl: string | null;
   priceAdjustment: string;
-  isDefault: boolean;
+  isInitialSelection: boolean;
   sortOrder: number;
+  ingredients: ProductIngredientResponse[];
+  modifierGroups: ModifierGroupResponse[];
 }
 
 export interface ProductGroupResponse {
   id: string;
+  code: string;
   name: string;
   minSelections: number;
   maxSelections: number;
@@ -110,4 +119,15 @@ export interface MenuProductDetailResponse extends MenuProductSummary {
   groups: ProductGroupResponse[];
   ingredients: ProductIngredientResponse[];
   modifierGroups: ModifierGroupResponse[];
+  regularMeal: MealSizeVariantResponse | null;
+  largeMeal: MealSizeVariantResponse | null;
+}
+
+export interface MealSizeVariantResponse {
+  menuProductId: string;
+  productId: string;
+  type: string;
+  name: string;
+  price: string;
+  imageUrl: string | null;
 }

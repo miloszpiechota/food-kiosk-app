@@ -1,0 +1,464 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [5 0 R 7 0 R 9 0 R 11 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Length 3514 >>
+stream
+BT
+/F1 10 Tf
+46 796 Td
+14 TL
+/F1 16 Tf (Jak dziala skladanie zamowienia i platnosc Stripe) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(Ten opis dotyczy aktualnego kodu aplikacji Food Ordering Kiosk App. Przeplyw zaczyna sie w) Tj
+T*
+(React, przechodzi przez NestJS, warstwe Prisma i konczy na rekordach w PostgreSQL.) Tj
+T*
+(Najkrotszy obraz procesu: koszyk w bazie danych -> snapshot zamowienia -> Stripe Checkout) Tj
+T*
+(Session -> redirect do Stripe -> powrot do kiosku -> frontend odswieza status -> backend) Tj
+T*
+(potwierdza platnosc dopiero po zweryfikowanym webhooku Stripe.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (1. FRONTEND: WYBOR PRODUKTOW I KOSZYK) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Aplikacja startuje w apps/web/src/app/router.tsx. Router trzyma stan ekranu: welcome, menu,) Tj
+T*
+(product-details, basket-review, payment-result.) Tj
+T*
+(- Uzytkownik wybiera tryb dine-in albo take-out. W aktualnym kodzie to jest tylko stan frontendu) Tj
+T*
+(\(orderMode\), uzywany w UI. Nie jest wysylany do API podczas tworzenia zamowienia.) Tj
+T*
+(- Gdy uzytkownik pierwszy raz dodaje produkt, frontend wywoluje ensureBasket\(\). Jesli nie ma) Tj
+T*
+(aktywnego basketId, wysyla POST /api/v1/kiosk/baskets przez funkcje createBasket\(\) z) Tj
+T*
+(basketApi.ts.) Tj
+T*
+(- Backend zwraca koszyk z id, sessionId, lista pozycji i suma. Frontend zapamietuje basket.id w) Tj
+T*
+(basketIdRef, a pozycje i podsumowanie w stanie React.) Tj
+T*
+(- Dodanie produktu idzie przez addBasketItem\(\), czyli POST) Tj
+T*
+(/api/v1/kiosk/baskets/:basketId/items. Ilosc zmieniana jest przez PATCH) Tj
+T*
+(/api/v1/kiosk/baskets/:basketId/items/:basketItemId, a usuniecie przez DELETE) Tj
+T*
+(/api/v1/kiosk/baskets/:basketId/items/:basketItemId.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (2. BACKEND: TWORZENIE I AKTUALIZACJA KOSZYKA) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Endpointy koszyka sa w apps/api/src/kiosk-basket/kiosk-basket.controller.ts, a logika w) Tj
+T*
+(KioskBasketService.) Tj
+T*
+(- createBasket\(\) tworzy rekord Basket ze statusem ACTIVE. Jesli request nie ma sessionId,) Tj
+T*
+(backend generuje go przez randomUUID\(\).) Tj
+T*
+(- addItem\(\) sprawdza, czy koszyk nadal jest aktywny, oraz laduje produkt menu dostepny dla) Tj
+T*
+(aktywnej restauracji i menu. Potem MealConfigurationService wylicza konfiguracje produktu: cene) Tj
+T*
+(jednostkowa, fingerprint i snapshot konfiguracji.) Tj
+T*
+(- Zapis pozycji koszyka odbywa sie w transakcji Prisma. Jesli w koszyku istnieje juz taka sama) Tj
+T*
+(pozycja \(basketId + menuProductId + configurationFingerprint\), backend zwieksza ilosc. Jesli) Tj
+T*
+(nie, tworzy nowy rekord BasketItem.) Tj
+T*
+(- Po kazdej zmianie backend sumuje lineTotal wszystkich pozycji i zapisuje wynik w) Tj
+T*
+(Basket.subtotalAmount. Dzieki temu frontend nie decyduje o cenie koncowej.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (3. PRISMA I DB: TABELE KOSZYKA) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Basket mapuje sie na tabele baskets.) Tj
+T*
+(- BasketItem mapuje sie na basket_items.) Tj
+T*
+(- Basket.status moze byc m.in. ACTIVE albo CHECKED_OUT.) Tj
+T*
+(- BasketItem przechowuje snapshot nazwy produktu, cene jednostkowa, ilosc, line total i JSON z) Tj
+T*
+(konfiguracja. To jest wazne, bo pozniejsza zmiana produktu w menu nie powinna zmienic juz) Tj
+T*
+(zlozonego koszyka.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (4. FRONTEND: KLIKNIECIE "CONTINUE TO PAYMENT") Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Na ekranie BasketReviewPage glowna funkcja to handleContinueToPayment\(\).) Tj
+T*
+(- Funkcja najpierw tworzy snapshot zamowienia: const order = createdOrder ?? await) Tj
+T*
+(onCreateOrderSnapshot\(\).) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 4 0 R >>
+endobj
+6 0 obj
+<< /Length 3555 >>
+stream
+BT
+/F1 10 Tf
+46 796 Td
+14 TL
+(- onCreateOrderSnapshot\(\) w routerze wywoluje createOrderSnapshot\(basketId\), czyli POST) Tj
+T*
+(/api/v1/kiosk/orders z body { basketId }.) Tj
+T*
+(- Po udanym utworzeniu zamowienia router czysci lokalny basketIdRef. Koszyk nie powinien juz byc) Tj
+T*
+(dalej edytowany jako aktywny koszyk.) Tj
+T*
+(- Dopiero po utworzeniu zamowienia frontend wywoluje createCheckoutSession\(order.id\), czyli POST) Tj
+T*
+(/api/v1/kiosk/orders/:orderId/checkout-session.) Tj
+T*
+(- Jesli backend zwroci checkoutUrl, frontend robi) Tj
+T*
+(window.location.assign\(checkoutSession.checkoutUrl\). To jest moment, w ktorym uzytkownik) Tj
+T*
+(opuszcza aplikacje i przechodzi do Stripe Checkout.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (5. BACKEND: TWORZENIE SNAPSHOTU ZAMOWIENIA) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Endpoint POST /api/v1/kiosk/orders jest w apps/api/src/kiosk-order/kiosk-order.controller.ts.) Tj
+T*
+(- KioskOrderService.createOrder\(\) wymaga basketId, a potem w transakcji szuka koszyka) Tj
+T*
+(BasketStatus.ACTIVE razem z pozycjami, produktami i menu.) Tj
+T*
+(- Jesli koszyk nie istnieje albo nie jest aktywny, backend zwraca blad BASKET_NOT_ACTIVE. Jesli) Tj
+T*
+(jest pusty, zwraca BASKET_EMPTY.) Tj
+T*
+(- Backend wylicza restaurantId na podstawie pozycji koszyka. Jesli pozycje pochodza z roznych) Tj
+T*
+(restauracji, zamowienie jest odrzucane.) Tj
+T*
+(- Backend liczy subtotalAmount jako sume BasketItem.lineTotal.) Tj
+T*
+(- Tworzony jest rekord Order ze statusem OrderStatus.NEW i paymentStatus = PENDING.) Tj
+T*
+(- Razem z zamowieniem tworzone sa OrderItem. Kazda pozycja dostaje snapshot nazwy produktu,) Tj
+T*
+(typu, ceny, ilosci, line total i konfiguracji.) Tj
+T*
+(- Na koncu tej samej transakcji koszyk jest aktualizowany do BasketStatus.CHECKED_OUT. Od tego) Tj
+T*
+(momentu nie jest juz aktywnym koszykiem.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (6. PRISMA I DB: TABELE ZAMOWIENIA) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Order mapuje sie na orders.) Tj
+T*
+(- OrderItem mapuje sie na order_items.) Tj
+T*
+(- Order.orderNumber ma format podobny do K-YYYYMMDD-XXXXXX, generowany z daty i fragmentu UUID.) Tj
+T*
+(- Order.paymentStatus zaczyna jako PENDING, potem przechodzi na AWAITING_PAYMENT_CONFIRMATION, a) Tj
+T*
+(po webhooku moze zostac PAID, FAILED albo CANCELLED.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (7. BACKEND: MOMENT ROZPOCZECIA STRIPE) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Stripe startuje dopiero przy POST /api/v1/kiosk/orders/:orderId/checkout-session. To nie jest) Tj
+T*
+(moment tworzenia koszyka ani nawet samo klikniecie w UI; faktycznie Stripe jest wywolywany po) Tj
+T*
+(istnieniu rekordu Order.) Tj
+T*
+(- PaymentsService.createCheckoutSession\(\) laduje zamowienie razem z pozycjami, platnoscia i) Tj
+T*
+(restauracja.) Tj
+T*
+(- Backend waliduje, ze zamowienie ma pozycje, nie jest juz oplacone i ma poprawna kwote w) Tj
+T*
+(groszach/centach \(toMinorUnits\(\)\).) Tj
+T*
+(- Tworzona jest sesja Stripe: stripe.checkout.sessions.create\({ mode: 'payment', ... }\).) Tj
+T*
+(- Do Stripe trafia client_reference_id = order.id oraz metadata: orderId i orderNumber. Te dane) Tj
+T*
+(pomagaja powiazac sesje Stripe z zamowieniem.) Tj
+T*
+(- success_url i cancel_url prowadza z powrotem na frontend. URL zawiera) Tj
+T*
+(checkout=success/cancelled i orderId. Dla sukcesu dodawany jest tez) Tj
+T*
+(session_id={CHECKOUT_SESSION_ID}.) Tj
+T*
+(- Kwota Stripe jest jedna pozycja line item: Kiosk order {orderNumber} z kwota order.totalAmount) Tj
+T*
+(* 100.) Tj
+T*
+(- Po otrzymaniu checkoutSession.url backend zapisuje lub aktualizuje rekord Payment przez) Tj
+T*
+(payment.upsert\(\).) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 3586 >>
+stream
+BT
+/F1 10 Tf
+46 796 Td
+14 TL
+(- W tej samej transakcji backend ustawia Payment.status i Order.paymentStatus na) Tj
+T*
+/F1 12 Tf (AWAITING_PAYMENT_CONFIRMATION.) Tj /F1 10 Tf
+T*
+(- Backend zwraca frontendowi checkoutUrl. Frontend przekierowuje uzytkownika do Stripe.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (8. PRISMA I DB: TABELA PLATNOSCI) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Payment mapuje sie na payments.) Tj
+T*
+(- Payment.orderId jest unikalne, czyli jedno zamowienie ma maksymalnie jeden rekord platnosci.) Tj
+T*
+(- provider ma wartosc STRIPE.) Tj
+T*
+(- providerSessionId przechowuje ID sesji Stripe Checkout i tez jest unikalne.) Tj
+T*
+(- providerPaymentIntentId przechowuje ID PaymentIntent, jesli Stripe je zwrocil.) Tj
+T*
+(- amount i currency sa zapisane po stronie backendu na podstawie zamowienia.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (9. POWROT ZE STRIPE DO FRONTENDU) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Po Stripe Checkout uzytkownik wraca na frontend z parametrami URL, np.) Tj
+T*
+(?checkout=success&orderId=... albo ?checkout=cancelled&orderId=....) Tj
+T*
+(- readPaymentReturnState\(\) w router.tsx odczytuje orderId i checkout. Jesli jest orderId, router) Tj
+T*
+(pokazuje ekran payment-result.) Tj
+T*
+(- PaymentResultPage od razu odpytuje backend przez GET /api/v1/kiosk/orders/:orderId.) Tj
+T*
+(- Ekran odswieza status co 2,5 sekundy, dopoki platnosc nie ma statusu terminalnego: PAID,) Tj
+T*
+(FAILED albo CANCELLED.) Tj
+T*
+(- Jezeli Stripe przekierowal z sukcesem, ale webhook jeszcze nie dotarl, UI pokazuje stan) Tj
+T*
+("Confirming payment". To jest celowe: frontend sam nie potwierdza platnosci.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (10. BACKEND: WEBHOOK STRIPE, CZYLI PRAWDZIWE POTWIERDZENIE PLATNOSCI) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Webhook odbiera POST /api/v1/webhooks/stripe w apps/api/src/payments/payments.controller.ts.) Tj
+T*
+(- Aplikacja NestJS jest uruchomiona z rawBody: true w main.ts. To jest potrzebne, bo Stripe) Tj
+T*
+(wymaga oryginalnego body requestu do weryfikacji podpisu.) Tj
+T*
+(- Controller wymaga naglowka stripe-signature oraz request.rawBody. Bez tego webhook jest) Tj
+T*
+(odrzucany.) Tj
+T*
+(- PaymentsService.handleStripeWebhook\(\) wywoluje stripe.webhooks.constructEvent\(payload,) Tj
+T*
+(signature, webhookSecret\). Jezeli podpis jest niepoprawny, backend zwraca blad) Tj
+T*
+/F1 12 Tf (STRIPE_SIGNATURE_INVALID.) Tj /F1 10 Tf
+T*
+(- resolvePaymentStatus\(\) mapuje zdarzenia Stripe: checkout.session.completed z) Tj
+T*
+(payment_status='paid' -> PAID, checkout.session.async_payment_succeeded -> PAID,) Tj
+T*
+(checkout.session.async_payment_failed -> FAILED, checkout.session.expired -> CANCELLED.) Tj
+T*
+(- applyCheckoutSessionStatus\(\) szuka rekordu Payment po providerSessionId = session.id. Jesli go) Tj
+T*
+(nie ma, nic nie aktualizuje.) Tj
+T*
+(- Jesli platnosc byla juz PAID, backend nie pozwala nadpisac jej pozniejszym statusem innym niz) Tj
+T*
+/F1 12 Tf (PAID.) Tj /F1 10 Tf
+T*
+(- W transakcji aktualizowane sa dwa miejsca: Payment.status oraz Order.paymentStatus. To jest) Tj
+T*
+(moment, w ktorym zamowienie staje sie realnie oplacone.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (11. KONFIGURACJA STRIPE I BEZPIECZENSTWO W TYM KODZIE) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- StripeConfigService.getSecretKey\(\) wymaga STRIPE_SECRET_KEY zaczynajacego sie od sk_test_. Kod) Tj
+T*
+(wymusza Stripe test mode.) Tj
+T*
+(- getWebhookSecret\(\) wymaga STRIPE_WEBHOOK_SECRET zaczynajacego sie od whsec_.) Tj
+T*
+(- FRONTEND_URL okresla, dokad Stripe ma przekierowac uzytkownika po sukcesie albo anulowaniu.) Tj
+T*
+(- CORS w main.ts dopuszcza frontend z FRONTEND_URL albo domyslnie http://localhost:5173.) Tj
+T*
+() Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 2265 >>
+stream
+BT
+/F1 10 Tf
+46 796 Td
+14 TL
+/F1 12 Tf (12. STATUSY: JAK JE CZYTAC) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Basket.ACTIVE: koszyk mozna jeszcze edytowac.) Tj
+T*
+(- Basket.CHECKED_OUT: z koszyka utworzono zamowienie; koszyk nie jest juz aktywny.) Tj
+T*
+(- Order.NEW: zamowienie zostalo utworzone, ale w tym kodzie nie ma jeszcze workflow kuchni.) Tj
+T*
+(- PaymentStatus.PENDING: zamowienie istnieje, ale sesja Stripe jeszcze nie zostala utworzona.) Tj
+T*
+(- PaymentStatus.AWAITING_PAYMENT_CONFIRMATION: sesja Stripe istnieje, uzytkownik jest lub byl w) Tj
+T*
+(Checkout, backend czeka na webhook.) Tj
+T*
+(- PaymentStatus.PAID: zweryfikowany webhook potwierdzil platnosc.) Tj
+T*
+(- PaymentStatus.FAILED: Stripe zglosil nieudana platnosc async.) Tj
+T*
+(- PaymentStatus.CANCELLED: sesja Stripe wygasla albo zostala uznana za anulowana.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (13. WAZNE OGRANICZENIA AKTUALNEJ IMPLEMENTACJI) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- Tryb dine-in/take-out nie jest obecnie zapisywany w DB przy zamowieniu. Jest tylko w stanie) Tj
+T*
+(React i UI.) Tj
+T*
+(- Redirect checkout=success nie ustawia platnosci jako oplaconej. To robi dopiero webhook) Tj
+T*
+(Stripe.) Tj
+T*
+(- W zamowieniu nie widac jeszcze rozbudowanego procesu realizacji kuchennej; Order.status) Tj
+T*
+(startuje jako NEW.) Tj
+T*
+(- Kwota dla Stripe jest wysylana jako jedna pozycja "Kiosk order ...", a nie jako osobne) Tj
+T*
+(produkty z koszyka.) Tj
+T*
+() Tj
+T*
+/F1 12 Tf (14. NAJWAZNIEJSZE PLIKI DO CZYTANIA W KOLEJNOSCI) Tj /F1 10 Tf
+T*
+() Tj
+T*
+(- apps/web/src/app/router.tsx - stan aplikacji, basketId, powrot ze Stripe.) Tj
+T*
+(- apps/web/src/pages/BasketReviewPage/BasketReviewPage.tsx - klikniecie "Continue to payment".) Tj
+T*
+(- apps/web/src/features/cart/api/basketApi.ts - requesty HTTP z frontendu.) Tj
+T*
+(- apps/api/src/kiosk-basket/kiosk-basket.service.ts - tworzenie i przeliczanie koszyka.) Tj
+T*
+(- apps/api/src/kiosk-order/kiosk-order.service.ts - snapshot zamowienia i checkout koszyka.) Tj
+T*
+(- apps/api/src/payments/payments.service.ts - Stripe Checkout i webhook.) Tj
+T*
+(- packages/database/prisma/schema.prisma - modele Basket, Order i Payment.) Tj
+T*
+(Dokument wygenerowany na podstawie aktualnego kodu repozytorium, bez zakladania funkcji, ktore) Tj
+T*
+(nie sa zaimplementowane.) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents 10 0 R >>
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000140 00000 n 
+0000000210 00000 n 
+0000003776 00000 n 
+0000003902 00000 n 
+0000007509 00000 n 
+0000007635 00000 n 
+0000011273 00000 n 
+0000011399 00000 n 
+0000013717 00000 n 
+trailer
+<< /Size 12 /Root 1 0 R >>
+startxref
+13845
+%%EOF

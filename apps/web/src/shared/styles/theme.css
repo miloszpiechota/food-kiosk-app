@@ -1,0 +1,213 @@
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  --font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  --background: #0a0a0f;
+  --foreground: #f5f5f7;
+  --card: #15151d;
+  --card-foreground: #f5f5f7;
+  --popover: #1a1a24;
+  --popover-foreground: #f5f5f7;
+  --primary: #0ea5e9;
+  --primary-foreground: #ffffff;
+  --secondary: #f59e0b;
+  --secondary-foreground: #ffffff;
+  --muted: #1f1f2e;
+  --muted-foreground: #94949d;
+  --accent: #2563eb;
+  --accent-foreground: #ffffff;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(255, 255, 255, 0.1);
+  --input: rgba(255, 255, 255, 0.08);
+  --input-background: #1a1a24;
+  --switch-background: #2a2a38;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: #0ea5e9;
+  --chart-1: #0ea5e9;
+  --chart-2: #f59e0b;
+  --chart-3: #8b5cf6;
+  --chart-4: #10b981;
+  --chart-5: #ef4444;
+  --radius: 0.75rem;
+  --sidebar: #15151d;
+  --sidebar-foreground: #f5f5f7;
+  --sidebar-primary: #0ea5e9;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #1f1f2e;
+  --sidebar-accent-foreground: #f5f5f7;
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --sidebar-ring: #0ea5e9;
+}
+
+html.a11y-large-text {
+  --font-size: 18px;
+}
+
+html.a11y-high-contrast {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #050505;
+  --card-foreground: #ffffff;
+  --popover: #050505;
+  --popover-foreground: #ffffff;
+  --primary: #00d5ff;
+  --primary-foreground: #000000;
+  --secondary: #ffdd00;
+  --secondary-foreground: #000000;
+  --muted: #141414;
+  --muted-foreground: #f4f4f5;
+  --accent: #ffffff;
+  --accent-foreground: #000000;
+  --border: rgba(255, 255, 255, 0.74);
+  --input: rgba(255, 255, 255, 0.18);
+  --input-background: #000000;
+  --sidebar: #000000;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #141414;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(255, 255, 255, 0.74);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-switch-background: var(--switch-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-size: var(--font-size);
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-family);
+  }
+
+  html.a11y-high-contrast * {
+    text-shadow: none !important;
+  }
+}
+
+@layer components {
+  .image-banner {
+    clip-path: inset(0 round 1.5rem);
+  }
+
+  .image-banner::after {
+    position: absolute;
+    z-index: 20;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 2px var(--background);
+    content: "";
+    pointer-events: none;
+  }
+
+  .product-label {
+    display: inline-flex;
+    min-height: 2.25rem;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid;
+    border-radius: 9999px;
+    padding: 0.4375rem 1rem;
+    font-size: 0.8125rem;
+    font-weight: 900;
+    line-height: 1;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(18px) saturate(180%);
+    -webkit-backdrop-filter: blur(18px) saturate(180%);
+  }
+
+  .product-label--popular {
+    border-color: rgba(125, 211, 252, 0.95);
+    background: linear-gradient(
+      135deg,
+      rgba(2, 132, 199, 0.92),
+      rgba(29, 78, 216, 0.82)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      0 0 0 1px rgba(3, 7, 18, 0.35),
+      0 8px 24px rgba(14, 165, 233, 0.48);
+    color: #ffffff;
+  }
+
+  .product-label--new {
+    border-color: rgba(253, 224, 71, 0.98);
+    background: linear-gradient(
+      135deg,
+      rgba(217, 119, 6, 0.94),
+      rgba(202, 138, 4, 0.84)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.4),
+      0 0 0 1px rgba(3, 7, 18, 0.35),
+      0 8px 24px rgba(245, 158, 11, 0.5);
+    color: #ffffff;
+  }
+
+  .product-label--vegetarian {
+    border-color: rgba(110, 231, 183, 0.98);
+    background: linear-gradient(
+      135deg,
+      rgba(5, 150, 105, 0.94),
+      rgba(4, 120, 87, 0.84)
+    );
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.38),
+      0 0 0 1px rgba(3, 7, 18, 0.35),
+      0 8px 24px rgba(16, 185, 129, 0.48);
+    color: #ffffff;
+  }
+
+  html.a11y-large-text button,
+  html.a11y-large-text input {
+    min-height: 3.25rem;
+  }
+}
